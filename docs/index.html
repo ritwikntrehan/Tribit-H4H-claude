@@ -24,11 +24,12 @@
 <label class="wide">Legal property owner<input data-field="owner" placeholder="From deed / title report"></label>
 <label class="wide">Authorized agent<input data-field="agent" placeholder="If applicable"></label>
 </div><div class="note">Owner authorization and signatures must be completed by real authorized persons. The demo does not sign documents.</div></div>
-<div id="uploads" class="hide"><h2>Supporting documents</h2><p>Add files to a local inventory. Files are not uploaded or analyzed by this demo.</p><div class="file"><label for="files">Select PDFs, images, or other supporting files</label><input id="files" type="file" multiple accept=".pdf,.png,.jpg,.jpeg,.doc,.docx,.json"></div><div id="filelist" style="margin-top:15px"></div><div class="note">In a production version, an extraction agent would propose field values with source citations. Here, uploaded files are tracked by filename only. The exported JSON includes names, not file contents.</div></div>
+<div id="uploads" class="hide"><h2>Document extraction & review</h2><p>Choose a text-based deed or title report. The browser proposes field values for your approval. No value is accepted automatically.</p><div class="file"><label for="files">Select PDFs, images, or other supporting files</label><input id="files" type="file" multiple accept=".pdf,.txt"></div><div id="filelist" style="margin-top:15px"></div><h3>Extraction suggestions</h3><div id="extractionStatus" class="muted" aria-live="polite">Select a PDF or TXT file to inspect.</div><div id="suggestions"></div><div class="note">Local heuristic extraction only. Text-based PDFs require a PDF reader library loaded from a public CDN. No document bytes are sent to our server. Scanned PDFs, images, and DOCX are not supported. Review every proposed value against the original document.</div></div>
 <div id="packet" class="hide"><h2>Draft packet preview</h2><p>Generated from the fields you entered. This is a draft intake summary, not a completed official city form.</p><div id="preview" class="out"></div><div class="actions"><button class="btn primary" id="downloadTxt">Download draft summary</button><button class="btn" id="downloadJson2">Export project JSON</button></div><div class="note">Do not file this preview as a Westminster application. Official forms, current instructions, plans, required studies, signatures and city confirmation remain necessary.</div></div>
 <div class="actions" id="globalActions"><button class="btn primary" id="next">Continue →</button><button class="btn" id="export">Export JSON</button><button class="btn" id="importBtn">Import JSON</button><input type="file" id="import" accept=".json,application/json" hidden></div>
 </section>
 <aside class="panel right"><h2>Packet readiness</h2><div class="metric" id="pct">0%</div><div class="muted">Core project fields entered</div><div class="bar"><div id="progress"></div></div><h3>Required or likely materials</h3><div id="checklist"></div><h3>Official Westminster sources</h3><div class="links"><a target="_blank" rel="noopener" href="https://www.westminster-ca.gov/home/showpublisheddocument/536/637544150393130000">Development Review packet (PL-101)</a><a target="_blank" rel="noopener" href="https://www.westminster-ca.gov/departments/community-development/planning-division/applications-forms-and-permits">Current planning forms and fees</a><a target="_blank" rel="noopener" href="https://www.westminster-ca.gov/departments/community-development/planning-division/development-review-process">Development Review process</a></div><div class="note">Checklist is illustrative and may change based on parcel, zoning, affordable-housing provisions, and city review.</div></aside></div><p class="foot">Tribit-H4H · Open-source interface demonstration · Local browser state only · No backend, AI API, storage or automated submission.</p></main>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script>
 (()=>{'use strict';
 const RULES_URL='./data/development-review.v0.1.json';
@@ -52,7 +53,51 @@ document.querySelectorAll('.step').forEach(b=>b.addEventListener('click',()=>nav
 document.getElementById('next').addEventListener('click',()=>{const a=['project','people','uploads','packet'];navigate(a[(a.indexOf(step)+1)%a.length])});
 document.getElementById('export').addEventListener('click',exportJson);document.getElementById('downloadJson2').addEventListener('click',exportJson);
 document.getElementById('downloadTxt').addEventListener('click',()=>download('westminster-draft-intake.txt',summary(),'text/plain'));
-const fileInput=document.getElementById('files');fileInput.addEventListener('change',e=>{files=[...e.target.files].map(f=>({name:f.name,size:f.size,category:'unclassified'}));const el=document.getElementById('filelist');el.replaceChildren();for(const f of files){const label=document.createElement('label');label.textContent=f.name+' · Document type';const select=document.createElement('select');for(const d of [{id:'unclassified',label:'Choose category'},...rules.documents]){const opt=document.createElement('option');opt.value=d.id;opt.textContent=d.label;select.append(opt)}select.value=f.category;select.addEventListener('change',()=>{f.category=select.value;render()});label.append(select);el.append(label)}render()});
+const fileInput=document.getElementById('files');
+const suggestionEl=document.getElementById('suggestions');
+const extractionStatus=document.getElementById('extractionStatus');
+let suggestions=[];
+function clean(s){return String(s||'').replace(/\\s+/g,' ').trim().slice(0,600)}
+function candidates(text,page,name){
+ const lines=text.split(/\\n/).map(clean).filter(Boolean);
+ const result=[];
+ function add(id,value,why){value=clean(value);if(value&&value.length>2&&!result.some(x=>x.id===id&&x.value===value))result.push({id,value,page,name,why})}
+ for(let i=0;i<lines.length;i++){
+  const line=lines[i];
+  let m=line.match(/\\b(?:APN|A\\.?P\\.?N\\.?|Assessor(?:'s)? Parcel (?:Number|No\\.?))\\s*[:#-]?\\s*([0-9]{3}[- ]?[0-9]{3}[- ]?[0-9]{2,4})\\b/i);
+  if(m)add('property.apn',m[1],'APN label');
+  m=line.match(/\\b(?:Property Address|Situs Address|Site Address|Premises Address)\\s*[:#-]?\\s*(.+)/i);
+  if(m)add('property.address',m[1],'Address label');
+  m=line.match(/\\b(?:Vesting|Current Owner|Property Owner|Owner of Record|Grantee)\\s*[:#-]\\s*(.+)/i);
+  if(m)add('owner.name',m[1],'Owner/grantee label');
+  if(/^(?:Legal Description|Description of Property)\\s*:?$/i.test(line)&&lines[i+1])add('property.legal_description',lines.slice(i+1,i+4).join(' '),'Legal description heading');
+  m=line.match(/^Legal Description\\s*:\\s*(.+)/i);if(m)add('property.legal_description',m[1],'Legal description label');
+ }
+ return result
+}
+async function extract(file){
+ if(file.name.toLowerCase().endsWith('.txt'))return [{page:1,text:await file.text()}];
+ if(!file.name.toLowerCase().endsWith('.pdf'))throw Error('Only text-based PDF and TXT supported');
+ if(!window.pdfjsLib)throw Error('PDF reader library unavailable. Check your connection or use TXT.');
+ window.pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+ const pdf=await window.pdfjsLib.getDocument({data:new Uint8Array(await file.arrayBuffer())}).promise;
+ if(pdf.numPages>80)throw Error('PDF exceeds 80-page demo limit');
+ const pages=[];for(let n=1;n<=pdf.numPages;n++){const p=await pdf.getPage(n);const t=await p.getTextContent();let str='';let lastY=null;for(const item of t.items){const y=item.transform?.[5];if(lastY!==null&&typeof y==='number'&&Math.abs(y-lastY)>3)str+='\\n';str+=item.str+' ';lastY=y}pages.push({page:n,text:str})}return pages
+}
+function drawSuggestions(){
+ suggestionEl.replaceChildren();
+ if(!suggestions.length){extractionStatus.textContent='No recognizable field suggestions. Enter values manually or try a text-based deed/title report.';return}
+ extractionStatus.textContent=suggestions.length+' candidate value(s) found. Nothing has been autofilled yet.';
+ for(const s of suggestions){const box=document.createElement('div');box.className='note';const title=document.createElement('strong');title.textContent=(rules.fields.find(f=>f.id===s.id)?.label||s.id)+': '+s.value;const meta=document.createElement('div');meta.className='muted';meta.textContent=s.name+' · page '+s.page+' · '+s.why;const btn=document.createElement('button');btn.className='btn';btn.textContent='Accept into intake';btn.addEventListener('click',()=>{if(values[s.id]&&values[s.id]!==s.value&&!confirm('Replace existing value for '+s.id+'?'))return;values[s.id]=s.value;verified[s.id]=false;build();btn.disabled=true;btn.textContent='Accepted · verify against source';extractionStatus.textContent='Accepted as unverified. Confirm against the original document.'});box.append(title,meta,btn);suggestionEl.append(box)}
+}
+fileInput.addEventListener('change',async e=>{
+ files=[...e.target.files].map(f=>({name:f.name,size:f.size,category:'unclassified'}));suggestions=[];
+ const el=document.getElementById('filelist');el.replaceChildren();
+ for(const f of files){const label=document.createElement('label');label.textContent=f.name+' · Document type';const select=document.createElement('select');for(const d of [{id:'unclassified',label:'Choose category'},...rules.documents]){const opt=document.createElement('option');opt.value=d.id;opt.textContent=d.label;select.append(opt)}select.value=f.category;select.addEventListener('change',()=>{f.category=select.value;render()});label.append(select);el.append(label)}
+ extractionStatus.textContent='Reading local documents…';render();
+ const chosen=[...e.target.files];for(const file of chosen){try{const pages=await extract(file);for(const p of pages)suggestions.push(...candidates(p.text,p.page,file.name))}catch(err){const warning=document.createElement('p');warning.className='muted';warning.textContent=file.name+': '+err.message;el.append(warning)}}
+ drawSuggestions()
+});
 document.getElementById('importBtn').addEventListener('click',()=>document.getElementById('import').click());
 document.getElementById('import').addEventListener('change',async e=>{const file=e.target.files[0];if(!file)return;try{const d=JSON.parse(await file.text());if(d.jurisdiction!=='Westminster, CA'||!d.fields||typeof d.fields!=='object')throw Error('Expected Westminster intake JSON with fields');for(const f of rules.fields){const entry=d.fields[f.id];if(entry&&typeof entry.value==='string')values[f.id]=entry.value;else if(entry&&typeof entry.value==='number')values[f.id]=String(entry.value);verified[f.id]=false}files=[];build();document.getElementById('filelist').textContent='Imported document metadata is not a file upload. Re-select files to inventory them.';alert('Imported values are unverified. Review each field.')}catch(err){alert('Import failed: '+err.message)}e.target.value=''});
 fetch(RULES_URL).then(r=>{if(!r.ok)throw Error('HTTP '+r.status);return r.json()}).then(d=>{if(!Array.isArray(d.fields)||!Array.isArray(d.documents))throw Error('Invalid rule pack');rules=d;build()}).catch(err=>{originalProject.innerHTML='<h2>Rules unavailable</h2><p>The Westminster rule pack could not be loaded ('+String(err.message).replace(/[<>]/g,'')+'). Check that GitHub Pages serves /westminster/rules/development-review.v0.1.json and reload.</p>';document.getElementById('pct').textContent='—';});
