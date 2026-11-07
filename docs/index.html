@@ -141,7 +141,12 @@ citySelect.addEventListener('change',async()=>{
  try{
   const response=await fetch(CITY_RULES[city]);if(!response.ok)throw Error('HTTP '+response.status);
   const nextRules=await response.json();if(!Array.isArray(nextRules.fields)||!Array.isArray(nextRules.documents)||nextRules.jurisdiction!==city+', CA')throw Error('Invalid city rules');
-  rules=nextRules;values={};verified={};evidence={};files=[];localFiles.clear();suggestions=[];extractedPages=[];
+  rules=nextRules;
+  const officialLink=document.getElementById('cityFormLink');
+  if(officialLink){officialLink.href=rules.sources.forms;officialLink.textContent=city+' planning forms';}
+  document.getElementById('officialPdfInput').disabled=city!=='Westminster';
+  document.getElementById('pdfMap').textContent=city==='Westminster'?'No official form uploaded.':'PDF field mapping is currently Westminster-only. Use the city-specific draft intake and document inventory.';
+  values={};verified={};evidence={};files=[];localFiles.clear();suggestions=[];extractedPages=[];
   development={housing_type:'townhomes',parcels:[],buildings:[]};
   for(const key of Object.keys(scheduleDates))delete scheduleDates[key];
   for(const key of Object.keys(scheduleCompleted))delete scheduleCompleted[key];
@@ -366,9 +371,9 @@ document.getElementById('downloadPacket').addEventListener('click',async()=>{
   zip.file('project-narrative-DRAFT.txt',packetBundle.project_narrative);
   zip.file('missing-items.json',JSON.stringify({required_fields:packetBundle.missing_required_fields,required_documents:packetBundle.missing_required_documents,conditional_review:packetBundle.conditional_review_items,development_issues:packetBundle.development_issues,intake_consistency_issues:packetBundle.intake_consistency_issues},null,2));
   zip.file('submission-manifest.json',JSON.stringify({generated_at:new Date().toISOString(),jurisdiction:rules.jurisdiction,rule_pack_version:rules.version,version_history_count:readHistory().length,attachments:manifest,populated_form:populatedForm?{path:'forms/'+populatedForm.name,source_filename:officialPdf.name,fields_filled:populatedForm.count,mappings:populatedForm.mappings,status:'DRAFT_REVIEW_REQUIRED'}:null,official_forms_included:!!populatedForm,ready_for_submission:false,requires_human_review:true},null,2));
-  zip.file('READ_ME_FIRST.txt','TRIBIT H4H | WESTMINSTER WORKING PACKET\\n\\nNOT AN OFFICIAL APPLICATION OR SUBMISSION-READY PACKET.\\nAny included populated form is a draft requiring line-by-line human review. Signatures, applicable technical plans, fees and city requirements must be independently confirmed.\\nIncluded attachments have not been checked for accuracy or sufficiency.\\nFiles marked NOT_INCLUDED_REUPLOAD_REQUIRED were not available in this browser session.\\n');
+  zip.file('READ_ME_FIRST.txt','TRIBIT H4H | '+rules.jurisdiction.toUpperCase()+' WORKING PACKET\\n\\nNOT AN OFFICIAL APPLICATION OR SUBMISSION-READY PACKET.\\nAny included populated form is a draft requiring line-by-line human review. Signatures, applicable technical plans, fees and city requirements must be independently confirmed.\\nIncluded attachments have not been checked for accuracy or sufficiency.\\nFiles marked NOT_INCLUDED_REUPLOAD_REQUIRED were not available in this browser session.\\n');
   const blob=await zip.generateAsync({type:'blob',compression:'DEFLATE',compressionOptions:{level:4}});
-  const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='westminster-working-packet.zip';document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),30000);
+  const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=citySelect.value.toLowerCase().replace(/\s+/g,'-')+'-working-packet.zip';document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),30000);
   document.getElementById('packetStatus').textContent='Working ZIP exported with '+manifest.filter(x=>x.status==='INCLUDED_UNVERIFIED').length+' source files. Official forms and city verification still required.';
  }catch(err){alert('Could not assemble ZIP: '+err.message)}finally{btn.disabled=false;btn.textContent='Download draft packet ZIP'}
 });
