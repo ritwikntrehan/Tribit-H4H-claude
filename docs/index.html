@@ -290,7 +290,9 @@ document.getElementById('downloadPacket').addEventListener('click',async()=>{
    let safe=record.name.replace(/[^a-zA-Z0-9._-]/g,'_').replace(/^\.+/,'').slice(0,120)||'attachment';
    const stem=safe;let suffix=2;while(used.has(safe)){safe=suffix+++'_'+stem}used.add(safe);
    attachments.file(safe,original);
-   manifest.push({name:record.name,archive_path:'attachments/'+safe,category:record.category,status:'INCLUDED_UNVERIFIED',size:original.size});
+   let sha256=null;
+   if(window.crypto?.subtle){const digest=await window.crypto.subtle.digest('SHA-256',await original.arrayBuffer());sha256=[...new Uint8Array(digest)].map(x=>x.toString(16).padStart(2,'0')).join('')}
+   manifest.push({name:record.name,archive_path:'attachments/'+safe,category:record.category,status:'INCLUDED_UNVERIFIED',size:original.size,sha256});
   }
   let populatedForm=null;
   if(officialPdf && officialFieldMap.some(item=>item.select.value&&verified[item.select.value]&&String(values[item.select.value]||'').trim())){
