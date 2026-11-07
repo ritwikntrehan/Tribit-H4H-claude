@@ -25,10 +25,10 @@
 <label class="wide">Authorized agent<input data-field="agent" placeholder="If applicable"></label>
 </div><div class="note">Owner authorization and signatures must be completed by real authorized persons. The demo does not sign documents.</div></div>
 <div id="uploads" class="hide"><h2>Document extraction & review</h2><p>Choose a text-based deed or title report. The browser proposes field values for your approval. No value is accepted automatically.</p><div class="file"><label for="files">Select PDFs, images, or other supporting files</label><input id="files" type="file" multiple accept=".pdf,.txt"></div><div id="filelist" style="margin-top:15px"></div><h3>Extraction suggestions</h3><div id="extractionStatus" class="muted" aria-live="polite">Select a PDF or TXT file to inspect.</div><div id="suggestions"></div><div class="note">Local heuristic extraction only. Text-based PDFs require a PDF reader library loaded from a public CDN. No document bytes are sent to our server. Scanned PDFs, images, and DOCX are not supported. Review every proposed value against the original document.</div></div>
-<div id="packet" class="hide"><h2>Draft packet preview</h2><p>Generated from the fields you entered. This is a draft intake summary, not a completed official city form.</p><div id="preview" class="out"></div><div class="actions"><button class="btn primary" id="downloadTxt">Download draft summary</button><button class="btn" id="downloadJson2">Export project JSON</button></div><div class="note">Do not file this preview as a Westminster application. Official forms, current instructions, plans, required studies, signatures and city confirmation remain necessary.</div></div>
+<div id="packet" class="hide"><h2>Stage 4 · Application draft generator</h2><p>Generate a structured Development Review draft, project narrative, and missing-materials report. Official city PDFs and technical drawings are not produced.</p><div class="actions"><button class="btn primary" id="generatePacket">Generate packet drafts</button><button class="btn" id="downloadPacket" disabled>Download packet bundle (JSON)</button></div><div id="packetStatus" class="note" aria-live="polite">No packet generated. Generate after reviewing the intake fields.</div><h3>Draft narrative</h3><div id="narrativePreview" class="out">Not generated</div><h3>Outstanding items</h3><div id="missingPreview" class="out">Not generated</div><div id="preview" class="out"></div><div class="actions"><button class="btn primary" id="downloadTxt">Download draft summary</button><button class="btn" id="downloadJson2">Export project JSON</button></div><div class="note">Do not file this preview as a Westminster application. Official forms, current instructions, plans, required studies, signatures and city confirmation remain necessary.</div></div>
 <div class="actions" id="globalActions"><button class="btn primary" id="next">Continue →</button><button class="btn" id="export">Export JSON</button><button class="btn" id="importBtn">Import JSON</button><input type="file" id="import" accept=".json,application/json" hidden></div>
 </section>
-<aside class="panel right"><h2>Packet readiness</h2><div class="metric" id="pct">0%</div><div class="muted">Core project fields entered</div><div class="bar"><div id="progress"></div></div><h3>Required or likely materials</h3><div id="checklist"></div><h3>Official Westminster sources</h3><div class="links"><a target="_blank" rel="noopener" href="https://www.westminster-ca.gov/home/showpublisheddocument/536/637544150393130000">Development Review packet (PL-101)</a><a target="_blank" rel="noopener" href="https://www.westminster-ca.gov/departments/community-development/planning-division/applications-forms-and-permits">Current planning forms and fees</a><a target="_blank" rel="noopener" href="https://www.westminster-ca.gov/departments/community-development/planning-division/development-review-process">Development Review process</a></div><div class="note">Checklist is illustrative and may change based on parcel, zoning, affordable-housing provisions, and city review.</div></aside></div><p class="foot">Tribit-H4H · Open-source interface demonstration · Local browser state only · No backend, AI API, storage or automated submission.</p></main>
+<aside class="panel right"><h2>Packet readiness</h2><div class="metric" id="pct">0%</div><div class="muted">Core project fields entered</div><div class="bar"><div id="progress"></div></div><h3>Required or likely materials</h3><div id="checklist"></div><h3>Official Westminster sources</h3><div class="links"><a target="_blank" rel="noopener" href="https://www.westminster-ca.gov/home/showpublisheddocument/536/637544150393130000">Development Review packet (PL-101)</a><a target="_blank" rel="noopener" href="https://www.westminster-ca.gov/departments/community-development/planning-division/applications-forms-and-permits">Current planning forms and fees</a><a target="_blank" rel="noopener" href="https://www.westminster-ca.gov/departments/community-development/planning-division/development-review-process">Development Review process</a></div><div class="note">Checklist is illustrative and may change based on parcel, zoning, affordable-housing provisions, and city review.</div></aside></div><p class="foot">Tribit-H4H · Open-source interface demonstration · Local browser state only · No backend, API keys, storage or automated submission. Drafts are generated locally.</p></main>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script>
 (()=>{'use strict';
@@ -53,6 +53,45 @@ document.querySelectorAll('.step').forEach(b=>b.addEventListener('click',()=>nav
 document.getElementById('next').addEventListener('click',()=>{const a=['project','people','uploads','packet'];navigate(a[(a.indexOf(step)+1)%a.length])});
 document.getElementById('export').addEventListener('click',exportJson);document.getElementById('downloadJson2').addEventListener('click',exportJson);
 document.getElementById('downloadTxt').addEventListener('click',()=>download('westminster-draft-intake.txt',summary(),'text/plain'));
+let packetBundle=null;
+function packetDraft(){
+ const value=id=>String(values[id]||'').trim();
+ const missingFields=rules.fields.filter(f=>f.requirement==='required'&&!value(f.id)).map(f=>({id:f.id,label:f.label,reason:'Required intake field missing'}));
+ const requiredDocs=rules.documents.filter(d=>d.requirement==='required');
+ const missingDocs=requiredDocs.filter(d=>!files.some(f=>f.category===d.id)).map(d=>({id:d.id,label:d.label,reason:'No document classified in this category; selected filenames do not verify contents'}));
+ const conditional=rules.documents.filter(d=>d.requirement!=='required').map(d=>({id:d.id,label:d.label,requirement:d.requirement,reason:'Applicability requires human/city confirmation'}));
+ const issues=[...missingFields,...missingDocs,...conditional];
+ const prose=(id,empty='[NOT PROVIDED]')=>value(id)||empty;
+ const narrative=[
+  'PROJECT DESCRIPTION | DRAFT FOR HUMAN REVIEW',
+  'Jurisdiction: Westminster, California',
+  'Site address: '+prose('property.address'),
+  'Assessor parcel number: '+prose('property.apn'),
+  'Zoning: '+prose('property.zoning'),
+  'General Plan designation: '+prose('property.general_plan'),
+  'Proposed residential units: '+prose('project.proposed_units'),
+  'Existing residential units: '+prose('project.existing_units'),
+  'Project scope: '+prose('project.description'),
+  'Affordability proposal: '+prose('project.affordability'),
+  'Applicant: '+prose('applicant.name'),
+  'Property owner: '+prose('owner.name'),
+  '',
+  'This is an intake-based draft only. No zoning compliance, CEQA exemption, density bonus, utility capacity, subdivision approval, or Development Review findings are established by this document.',
+  'The city must confirm the applicable review pathway and current submittal requirements. Signatures, certified technical studies, and official forms are not generated.'
+ ].join('\n');
+ return {format:'tribit-westminster-packet-draft-v1',generated_at:new Date().toISOString(),jurisdiction:rules.jurisdiction,rule_pack_version:rules.version,application_fields:data().fields,project_narrative:narrative,document_inventory:data().documents,missing_required_fields:missingFields,missing_required_documents:missingDocs,conditional_review_items:conditional,approval_prediction:null,city_completeness_determination:false,human_approved:false,auto_submit:false}
+}
+document.getElementById('generatePacket').addEventListener('click',()=>{
+ if(!rules)return;
+ packetBundle=packetDraft();
+ document.getElementById('narrativePreview').textContent=packetBundle.project_narrative;
+ const issues=[...packetBundle.missing_required_fields,...packetBundle.missing_required_documents,...packetBundle.conditional_review_items];
+ document.getElementById('missingPreview').textContent=issues.length?issues.map(i=>'• '+i.label+' — '+i.reason).join('\n'):'No listed gaps; city review is still required.';
+ document.getElementById('packetStatus').textContent='Draft generated locally. '+packetBundle.missing_required_fields.length+' missing required fields; '+packetBundle.missing_required_documents.length+' missing required document categories; '+packetBundle.conditional_review_items.length+' conditional items need review.';
+ document.getElementById('downloadPacket').disabled=false
+});
+document.getElementById('downloadPacket').addEventListener('click',()=>{if(packetBundle)download('westminster-application-draft-bundle.json',JSON.stringify(packetBundle,null,2),'application/json')});
+
 const fileInput=document.getElementById('files');
 const suggestionEl=document.getElementById('suggestions');
 const extractionStatus=document.getElementById('extractionStatus');
