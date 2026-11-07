@@ -260,8 +260,8 @@ function runPreflight(){
   else if(value&&!verified[f.id])issue('verify:'+f.id,'evidence','review',f.label,'Field is populated but not confirmed by a human.','Compare against the original source and confirm before submission.',null);
  }
  for(const d of rules.documents){
-  const matched=files.filter(f=>f.category===d.id);
-  if(d.requirement==='required'&&!matched.length)issue('document:'+d.id,'document','blocker',d.label,'No file has been classified under this required category.','Obtain and classify the document; verify its actual contents.',rules.sources[d.source]||null);
+  const matched=files.filter(f=>f.category===d.id&&!f.restored);const pending=files.some(f=>f.category===d.id&&f.restored);
+  if(d.requirement==='required'&&!matched.length)issue('document:'+d.id,'document','blocker',d.label,pending?'Previously selected file must be re-uploaded.':'No file has been classified under this required category.','Obtain and classify the document; verify its actual contents.',rules.sources[d.source]||null);
   else if(matched.length)issue('document-review:'+d.id,'document','review',d.label,'A file is selected, but its contents and current validity have not been verified.','Review the document and confirm it meets the city requirement.',rules.sources[d.source]||null);
   if(d.requirement!=='required')issue('conditional:'+d.id,'applicability','city_review',d.label,'Requirement marked '+d.requirement+' in the preliminary rule pack.','Determine whether this applies to the parcel and proposed development with city staff.',rules.sources[d.source]||null)
  }
@@ -340,13 +340,34 @@ function drawSuggestions(){
  extractionStatus.textContent=suggestions.length+' candidate value(s) available for review.';
  for(const suggestion of suggestions){const box=document.createElement('div');box.className='note';const title=document.createElement('strong');title.textContent=(rules.fields.find(f=>f.id===suggestion.id)?.label||suggestion.id)+': '+suggestion.value;const meta=document.createElement('div');meta.className='muted';meta.textContent=suggestion.name+' · page '+suggestion.page+' · '+suggestion.why;const btn=document.createElement('button');btn.className='btn';btn.textContent='Review source & value';btn.addEventListener('click',()=>showEvidence(suggestion));box.append(title,meta,btn);suggestionEl.append(box)}
 }
-fileInput.addEventListener('change',async e=>{
- files=[...e.target.files].map(f=>({name:f.name,size:f.size,category:'unclassified'}));suggestions=[];extractedPages=[];claudeButton.disabled=true;localFiles=new Map([...e.target.files].map(f=>[f.name,f]));
+function drawFileInventory(){
  const el=document.getElementById('filelist');el.replaceChildren();
- for(const f of files){const label=document.createElement('label');label.textContent=f.name+' · Document type';const select=document.createElement('select');for(const d of [{id:'unclassified',label:'Choose category'},...rules.documents]){const opt=document.createElement('option');opt.value=d.id;opt.textContent=d.label;select.append(opt)}select.value=f.category;select.addEventListener('change',()=>{f.category=select.value;render()});label.append(select);el.append(label)}
- extractionStatus.textContent='Reading local documents…';render();
- const chosen=[...e.target.files];for(const file of chosen){try{const pages=await extract(file);for(const p of pages){suggestions.push(...candidates(p.text,p.page,file.name));extractedPages.push({filename:file.name,page:p.page,text:p.text.slice(0,12000)})}}catch(err){const warning=document.createElement('p');warning.className='muted';warning.textContent=file.name+': '+err.message;el.append(warning)}}
- drawSuggestions();claudeButton.disabled=!CLAUDE_API_BASE||!extractedPages.length;navigate('results')
+ for(const f of files){
+  const row=document.createElement('div');row.className='check';row.style.marginTop='8px';
+  const name=document.createElement('strong');name.textContent=f.name+' ('+Math.round(f.size/1024)+' KB)'+(f.restored?' · re-upload required':'');
+  const select=document.createElement('select');select.setAttribute('aria-label','Document category for '+f.name);
+  for(const d of [{id:'unclassified',label:'Choose category'},...rules.documents]){const opt=document.createElement('option');opt.value=d.id;opt.textContent=d.label;select.append(opt)}
+  select.value=f.category;select.addEventListener('change',()=>{f.category=select.value;invalidatePacket();render()});
+  const remove=document.createElement('button');remove.className='btn';remove.textContent='Remove';remove.addEventListener('click',()=>{files=files.filter(x=>x!==f);if(!files.some(x=>x.name===f.name&&!x.restored))localFiles.delete(f.name);extractedPages=extractedPages.filter(p=>p.filename!==f.name);suggestions=suggestions.filter(x=>x.name!==f.name);invalidatePacket();drawFileInventory();drawSuggestions();render()});
+  row.append(name,select,remove);el.append(row);
+ }
+}
+fileInput.addEventListener('change',async e=>{
+ const chosen=[...e.target.files];if(!chosen.length)return;
+ suggestions=[];extractedPages=[];claudeButton.disabled=true;
+ for(const file of chosen){
+  const existing=files.find(f=>f.name===file.name);
+  if(existing&&existing.size!==file.size){alert('A different document with the same filename already exists. Rename it before uploading.');continue}
+  if(existing){existing.restored=false;existing.size=file.size}else files.push({name:file.name,size:file.size,category:'unclassified'});
+  localFiles.set(file.name,file);
+ }
+ invalidatePacket();drawFileInventory();extractionStatus.textContent='Reading local documents…';render();
+ for(const file of chosen){
+  if(localFiles.get(file.name)!==file)continue;
+  try{const pages=await extract(file);for(const p of pages){suggestions.push(...candidates(p.text,p.page,file.name));extractedPages.push({filename:file.name,page:p.page,text:p.text.slice(0,12000)})}}
+  catch(err){const warning=document.createElement('p');warning.className='muted';warning.textContent=file.name+': '+err.message;document.getElementById('filelist').append(warning)}
+ }
+ fileInput.value='';drawSuggestions();claudeButton.disabled=!CLAUDE_API_BASE||!extractedPages.length;navigate('results')
 });
 claudeButton.addEventListener('click',async()=>{
  if(!CLAUDE_API_BASE||!extractedPages.length)return;
@@ -367,6 +388,6 @@ claudeButton.addEventListener('click',async()=>{
 });
 document.getElementById('importBtn').addEventListener('click',()=>document.getElementById('import').click());
 document.getElementById('import').addEventListener('change',async e=>{const file=e.target.files[0];if(!file)return;try{const d=JSON.parse(await file.text());if(d.jurisdiction!=='Westminster, CA'||!d.fields||typeof d.fields!=='object')throw Error('Expected Westminster intake JSON with fields');for(const f of rules.fields){const entry=d.fields[f.id];if(entry&&typeof entry.value==='string')values[f.id]=entry.value;else if(entry&&typeof entry.value==='number')values[f.id]=String(entry.value);verified[f.id]=false;delete evidence[f.id]}files=[];localFiles.clear();build();document.getElementById('filelist').textContent='Imported document metadata is not a file upload. Re-select files to inventory them.';alert('Imported values are unverified. Review each field.')}catch(err){alert('Import failed: '+err.message)}e.target.value=''});
-fetch(RULES_URL).then(r=>{if(!r.ok)throw Error('HTTP '+r.status);return r.json()}).then(d=>{if(!Array.isArray(d.fields)||!Array.isArray(d.documents))throw Error('Invalid rule pack');rules=d;restoreDraft();build()}).catch(err=>{originalProject.innerHTML='<h2>Rules unavailable</h2><p>The Westminster rule pack could not be loaded ('+String(err.message).replace(/[<>]/g,'')+'). Check that the deployed site serves ./data/development-review.v0.1.json and reload.</p>';document.getElementById('pct').textContent='—';});
+fetch(RULES_URL).then(r=>{if(!r.ok)throw Error('HTTP '+r.status);return r.json()}).then(d=>{if(!Array.isArray(d.fields)||!Array.isArray(d.documents))throw Error('Invalid rule pack');rules=d;restoreDraft();build();drawFileInventory()}).catch(err=>{originalProject.innerHTML='<h2>Rules unavailable</h2><p>The Westminster rule pack could not be loaded ('+String(err.message).replace(/[<>]/g,'')+'). Check that the deployed site serves ./data/development-review.v0.1.json and reload.</p>';document.getElementById('pct').textContent='—';});
 })();
 </script></body></html>
