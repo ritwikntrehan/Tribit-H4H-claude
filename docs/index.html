@@ -316,7 +316,7 @@ function runPreflight(){
   if(d.requirement!=='required')issue('conditional:'+d.id,'applicability','city_review',d.label,'Requirement marked '+d.requirement+' in the preliminary rule pack.','Determine whether this applies to the parcel and proposed development with city staff.',rules.sources[d.source]||null)
  }
  const units=String(values['project.proposed_units']||'').trim();
- if(units&&!/^\\d+$/.test(units))issue('units-invalid','consistency','blocker','Proposed unit count','Expected a nonnegative whole number.','Correct the unit count.',null);
+ if(units&&!/^\d+$/.test(units))issue('units-invalid','consistency','blocker','Proposed unit count','Expected a nonnegative whole number.','Correct the unit count.',null);
  else if(units&&Number(units)>=3)issue('dr-pathway','applicability','city_review','Development Review pathway','Three or more new residential units may trigger Development Review; statutory alternatives and exemptions require separate analysis.','Confirm pathway with Westminster Planning.',rules.sources.applicability);
  if(values['property.apn']&&!/^\\d{3}[- ]?\\d{3}[- ]?\\d{2,4}$/.test(String(values['property.apn']).trim()))issue('apn-format','consistency','review','APN format','APN does not match the expected local numeric pattern.','Verify against the county assessor record.',null);
  for(const s of suggestions){const current=String(values[s.id]||'').trim();if(current&&s.value!==current&&evidence[s.id]?.file!==s.name)issue('conflict:'+s.id+':'+s.name+':'+s.page,'conflict','review',rules.fields.find(f=>f.id===s.id)?.label||s.id,'Document '+s.name+' page '+s.page+' suggests "'+s.value+'" but intake has "'+current+'".','Inspect both sources; resolve and document which is authoritative.',null)}
@@ -341,21 +341,21 @@ const claudeButton=document.getElementById('claudeExtract');\nconst fileInput=do
 const suggestionEl=document.getElementById('suggestions');
 const extractionStatus=document.getElementById('extractionStatus');
 let suggestions=[];
-function clean(s){return String(s||'').replace(/\\s+/g,' ').trim().slice(0,600)}
+function clean(s){return String(s||'').replace(/\s+/g,' ').trim().slice(0,600)}
 function candidates(text,page,name){
- const lines=text.split(/\\n/).map(clean).filter(Boolean);
+ const lines=text.split(/\n/).map(clean).filter(Boolean);
  const result=[];
  function add(id,value,why){value=clean(value);if(value&&value.length>2&&!result.some(x=>x.id===id&&x.value===value))result.push({id,value,page,name,why})}
  for(let i=0;i<lines.length;i++){
   const line=lines[i];
-  let m=line.match(/\\b(?:APN|A\\.?P\\.?N\\.?|Assessor(?:'s)? Parcel (?:Number|No\\.?))\\s*[:#-]?\\s*([0-9]{3}[- ]?[0-9]{3}[- ]?[0-9]{2,4})\\b/i);
+  let m=line.match(/\b(?:APN|A\.?P\.?N\.?|Assessor(?:'s)? Parcel (?:Number|No\.?))\s*[:#-]?\s*([0-9]{3}[- ]?[0-9]{3}[- ]?[0-9]{2,4})\b/i);
   if(m)add('property.apn',m[1],'APN label');
-  m=line.match(/\\b(?:Property Address|Situs Address|Site Address|Premises Address)\\s*[:#-]?\\s*(.+)/i);
+  m=line.match(/\b(?:Property Address|Situs Address|Site Address|Premises Address)\s*[:#-]?\s*(.+)/i);
   if(m)add('property.address',m[1],'Address label');
-  m=line.match(/\\b(?:Vesting|Current Owner|Property Owner|Owner of Record|Grantee)\\s*[:#-]\\s*(.+)/i);
+  m=line.match(/\b(?:Vesting|Current Owner|Property Owner|Owner of Record|Grantee)\s*[:#-]\s*(.+)/i);
   if(m)add('owner.name',m[1],'Owner/grantee label');
-  if(/^(?:Legal Description|Description of Property)\\s*:?$/i.test(line)&&lines[i+1])add('property.legal_description',lines.slice(i+1,i+4).join(' '),'Legal description heading');
-  m=line.match(/^Legal Description\\s*:\\s*(.+)/i);if(m)add('property.legal_description',m[1],'Legal description label');
+  if(/^(?:Legal Description|Description of Property)\s*:?$/i.test(line)&&lines[i+1])add('property.legal_description',lines.slice(i+1,i+4).join(' '),'Legal description heading');
+  m=line.match(/^Legal Description\s*:\s*(.+)/i);if(m)add('property.legal_description',m[1],'Legal description label');
  }
  return result
 }
@@ -366,7 +366,7 @@ async function extract(file){
  window.pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
  const pdf=await window.pdfjsLib.getDocument({data:new Uint8Array(await file.arrayBuffer())}).promise;
  if(pdf.numPages>80)throw Error('PDF exceeds 80-page demo limit');
- const pages=[];for(let n=1;n<=pdf.numPages;n++){const p=await pdf.getPage(n);const t=await p.getTextContent();let str='';let lastY=null;for(const item of t.items){const y=item.transform?.[5];if(lastY!==null&&typeof y==='number'&&Math.abs(y-lastY)>3)str+='\\n';str+=item.str+' ';lastY=y}pages.push({page:n,text:str})}return pages
+ const pages=[];for(let n=1;n<=pdf.numPages;n++){const p=await pdf.getPage(n);const t=await p.getTextContent();let str='';let lastY=null;for(const item of t.items){const y=item.transform?.[5];if(lastY!==null&&typeof y==='number'&&Math.abs(y-lastY)>3)str+='\n';str+=item.str+' ';lastY=y}pages.push({page:n,text:str})}return pages
 }
 function showEvidence(suggestion){
  const panel=document.getElementById('evidenceReview');panel.replaceChildren();
