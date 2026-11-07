@@ -169,7 +169,9 @@ document.getElementById('runPreflight').addEventListener('click',()=>{
 document.getElementById('downloadPreflight').addEventListener('click',()=>{if(preflightReport)download('westminster-preflight.json',JSON.stringify(preflightReport,null,2),'application/json')});
 
 
-const CLAUDE_API_BASE=''; // Set to your deployed HTTPS backend origin, e.g. https://your-backend.example.org (no API key here).\nlet extractedPages=[];\nconst claudeButton=document.getElementById('claudeExtract');\nconst fileInput=document.getElementById('files');
+const CLAUDE_API_BASE=''; // Set to your deployed HTTPS backend origin, e.g. https://your-backend.example.org (no API key here).
+let extractedPages=[];
+const claudeButton=document.getElementById('claudeExtract');\nconst fileInput=document.getElementById('files');
 const suggestionEl=document.getElementById('suggestions');
 const extractionStatus=document.getElementById('extractionStatus');
 let suggestions=[];
