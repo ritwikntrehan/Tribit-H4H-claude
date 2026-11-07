@@ -128,14 +128,19 @@ document.getElementById('officialPdfInput').addEventListener('change',async e=>{
   button.disabled=false;
  }catch(err){box.textContent='Could not inspect PDF: '+err.message}
 });
+async function makeMappedPdf(){
+ if(!officialPdf||!window.PDFLib)throw Error('No fillable PDF uploaded');
+ const pdf=await window.PDFLib.PDFDocument.load(officialPdf.bytes);const form=pdf.getForm();let count=0;const mappings=[];
+ for(const item of officialFieldMap){const id=item.select.value;if(!id||!verified[id]||!String(values[id]||'').trim())continue;form.getTextField(item.name).setText(String(values[id]).slice(0,1000));count++;mappings.push({pdf_field:item.name,intake_field:id})}
+ if(!count)throw Error('Map at least one PDF field to a confirmed intake value');
+ return {bytes:await pdf.save(),count,mappings,name:officialPdf.name.replace(/\.pdf$/i,'')+'-POPULATED-DRAFT.pdf'};
+}
 document.getElementById('fillOfficialPdf').addEventListener('click',async()=>{
  if(!officialPdf)return;const btn=document.getElementById('fillOfficialPdf');btn.disabled=true;
  try{
-  const pdf=await window.PDFLib.PDFDocument.load(officialPdf.bytes);const form=pdf.getForm();let count=0;
-  for(const item of officialFieldMap){const id=item.select.value;if(!id||!verified[id]||!String(values[id]||'').trim())continue;form.getTextField(item.name).setText(String(values[id]).slice(0,1000));count++}
-  if(!count){alert('Map at least one PDF field to a confirmed intake value.');return}
-  const bytes=await pdf.save();const blob=new Blob([bytes],{type:'application/pdf'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=officialPdf.name.replace(/\.pdf$/i,'')+'-POPULATED-DRAFT.pdf';document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),30000);
-  document.getElementById('packetStatus').textContent='Generated PDF draft with '+count+' mapped fields. Review every page, signatures, and the current city instructions before submission.';
+  const result=await makeMappedPdf();
+  const blob=new Blob([result.bytes],{type:'application/pdf'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=result.name;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),30000);
+  document.getElementById('packetStatus').textContent='Generated PDF draft with '+result.count+' mapped fields. Review every page, signatures, and the current city instructions before submission.';
  }catch(err){alert('PDF filling failed: '+err.message)}finally{btn.disabled=false}
 });
 let packetBundle=null;
@@ -192,12 +197,17 @@ document.getElementById('downloadPacket').addEventListener('click',async()=>{
    attachments.file(safe,original);
    manifest.push({name:record.name,archive_path:'attachments/'+safe,category:record.category,status:'INCLUDED_UNVERIFIED',size:original.size});
   }
+  let populatedForm=null;
+  if(officialPdf && officialFieldMap.some(item=>item.select.value&&verified[item.select.value]&&String(values[item.select.value]||'').trim())){
+   populatedForm=await makeMappedPdf();
+   zip.folder('forms').file(populatedForm.name,populatedForm.bytes);
+  }
   zip.file('intake.json',JSON.stringify(data(),null,2));
   zip.file('draft-packet.json',JSON.stringify(packetBundle,null,2));
   zip.file('project-narrative-DRAFT.txt',packetBundle.project_narrative);
   zip.file('missing-items.json',JSON.stringify({required_fields:packetBundle.missing_required_fields,required_documents:packetBundle.missing_required_documents,conditional_review:packetBundle.conditional_review_items},null,2));
-  zip.file('submission-manifest.json',JSON.stringify({generated_at:new Date().toISOString(),jurisdiction:rules.jurisdiction,rule_pack_version:rules.version,attachments:manifest,official_forms_included:false,ready_for_submission:false,requires_human_review:true},null,2));
-  zip.file('READ_ME_FIRST.txt','TRIBIT H4H | WESTMINSTER WORKING PACKET\\n\\nNOT AN OFFICIAL APPLICATION OR SUBMISSION-READY PACKET.\\nOfficial Westminster forms, signatures, applicable technical plans, fees and city requirements must be independently confirmed.\\nIncluded attachments have not been checked for accuracy or sufficiency.\\nFiles marked NOT_INCLUDED_REUPLOAD_REQUIRED were not available in this browser session.\\n');
+  zip.file('submission-manifest.json',JSON.stringify({generated_at:new Date().toISOString(),jurisdiction:rules.jurisdiction,rule_pack_version:rules.version,attachments:manifest,populated_form:populatedForm?{path:'forms/'+populatedForm.name,source_filename:officialPdf.name,fields_filled:populatedForm.count,mappings:populatedForm.mappings,status:'DRAFT_REVIEW_REQUIRED'}:null,official_forms_included:!!populatedForm,ready_for_submission:false,requires_human_review:true},null,2));
+  zip.file('READ_ME_FIRST.txt','TRIBIT H4H | WESTMINSTER WORKING PACKET\\n\\nNOT AN OFFICIAL APPLICATION OR SUBMISSION-READY PACKET.\\nAny included populated form is a draft requiring line-by-line human review. Signatures, applicable technical plans, fees and city requirements must be independently confirmed.\\nIncluded attachments have not been checked for accuracy or sufficiency.\\nFiles marked NOT_INCLUDED_REUPLOAD_REQUIRED were not available in this browser session.\\n');
   const blob=await zip.generateAsync({type:'blob',compression:'DEFLATE',compressionOptions:{level:4}});
   const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='westminster-working-packet.zip';document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),30000);
   document.getElementById('packetStatus').textContent='Working ZIP exported with '+manifest.filter(x=>x.status==='INCLUDED_UNVERIFIED').length+' source files. Official forms and city verification still required.';
