@@ -4,7 +4,7 @@
 .dash-metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:15px 0}.dash-metric{padding:14px;border:1px solid #dce5dd;border-radius:9px;background:#f8faf8}.dash-metric strong{display:block;font-size:25px;color:#163f34}.dash-metric span{font-size:11px;color:#64766a}.action-item{padding:12px 0;border-top:1px solid #e3eae3}.action-item strong{display:block;font-size:13px}.action-item p{font-size:12px;margin:5px 0}.action-item button{margin-top:5px}.result-actions{display:flex;gap:9px;flex-wrap:wrap}.result-actions button{flex:1}@media(max-width:650px){.dash-metrics{grid-template-columns:repeat(3,minmax(0,1fr))}.dash-metric{padding:9px}.dash-metric strong{font-size:20px}}.city-ok{color:#176c43;font-weight:700}.city-pending{color:#8b6c1c}.stage-card{border-top:1px solid #e2eae3;padding:13px 0}.stage-card strong{font-size:13px}.stage-card p{font-size:12px;margin:5px 0}.stage-card label{margin-top:8px}.stage-card input{max-width:230px}.city-select{max-width:360px}</style></head><body>
 <header><div class="brand">TRIBIT <span style="color:#a9e2bd">/ H4H</span><small>Habitat application packet studio</small></div><span class="pill">Interactive prototype · No submission</span></header>
 <main><h1 id="pageTitle">Westminster development packet</h1><label for="citySelect">Project jurisdiction</label><select id="citySelect" class="city-select" aria-describedby="cityStatus"></select><div id="cityStatus" class="muted" aria-live="polite">Westminster rules available</div><p class="sub">Start with the documents you already have. Review suggested facts, complete only what is missing, then generate a Westminster application draft and action list.</p>
-<div class="note" id="draftStatus" aria-live="polite">Draft is stored only in this browser. Do not enter confidential information on a shared device.</div><div class="layout"><nav class="panel sidebar" aria-label="Workflow"><button class="step active" data-step="uploads"><span>01</span> Upload documents</button><button class="step" data-step="results"><span>02</span> Application results</button><button class="step" data-step="project"><span>03</span> Project details</button><button class="step" data-step="people"><span>04</span> People & ownership</button><button class="step" data-step="packet"><span>05</span> Draft packet & preflight</button><div class="note">Start with existing records, or skip uploads and enter facts manually. Files are read locally in this prototype; no city filing occurs.</div></nav>
+<div class="note" id="draftStatus" aria-live="polite">Draft is stored only in this browser. Do not enter confidential information on a shared device.</div><div class="panel" style="margin:12px 0"><strong>Application versions</strong><p>Save named intake snapshots before revisions or city correction responses. Snapshots are local to this browser and do not include the original uploaded file bytes.</p><div class="actions"><input id="snapshotLabel" aria-label="Version label" placeholder="e.g. Initial submission / Correction round 1" style="min-width:240px;flex:1"><button class="btn" id="saveSnapshot">Save version</button><button class="btn" id="exportSnapshots">Export version history</button></div><div id="snapshotList" aria-live="polite">No saved versions.</div></div><div class="layout"><nav class="panel sidebar" aria-label="Workflow"><button class="step active" data-step="uploads"><span>01</span> Upload documents</button><button class="step" data-step="results"><span>02</span> Application results</button><button class="step" data-step="project"><span>03</span> Project details</button><button class="step" data-step="people"><span>04</span> People & ownership</button><button class="step" data-step="packet"><span>05</span> Draft packet & preflight</button><div class="note">Start with existing records, or skip uploads and enter facts manually. Files are read locally in this prototype; no city filing occurs.</div></nav>
 <section class="panel center">
 <div id="results" class="hide"><h2>Application results</h2><p>Your draft and next actions update as you add or correct information. These are preliminary readiness checks, not a city determination.</p><div class="dash-metrics"><div class="dash-metric"><strong id="dashFacts">0</strong><span>Fields populated</span></div><div class="dash-metric"><strong id="dashBlockers">0</strong><span>Missing required items</span></div><div class="dash-metric"><strong id="dashReviews">0</strong><span>Review / city questions</span></div></div><h3>Application schedule & staged submissions</h3><p>Planning application materials are generally assembled for initial filing, followed by city completeness corrections, entitlement review and later building permit plans. Exact stages and deadlines depend on the parcel, filing pathway and city instructions. Enter dates only when confirmed.</p><div id="scheduleStages"></div><h3>Next actions</h3><div id="actionQueue" aria-live="polite"></div><h3>Application outputs</h3><div class="result-actions"><button class="btn primary" id="resultPacket">Open draft application</button><button class="btn" id="resultExport">Export action report</button></div><div class="note">A selected document does not mean the requirement has been verified. All facts and planning findings require human review.</div></div><div id="project" class="hide"><h2>Project details</h2><p>Start with the six-townhome example or replace it with a real project.</p><div class="fields">
 <label class="wide">Project name<input data-field="project_name" value="Westminster Affordable Townhomes (demo)"></label>
@@ -41,6 +41,39 @@ let rules=null,values={},verified={},files=[],evidence={},localFiles=new Map(),s
 const scheduleDates={};
 const scheduleCompleted={};
 const DRAFT_KEY='tribit-h4h-westminster-draft-v1';
+const HISTORY_KEY='tribit-h4h-westminster-history-v1';
+function readHistory(){try{const v=JSON.parse(localStorage.getItem(HISTORY_KEY)||'[]');return Array.isArray(v)?v:[]}catch{return []}}
+function renderHistory(){
+ const root=document.getElementById('snapshotList');root.replaceChildren();const history=readHistory();
+ if(!history.length){root.textContent='No saved versions.';return}
+ for(const item of history.slice().reverse()){
+  const row=document.createElement('div');row.className='check';row.style.marginTop='8px';
+  const desc=document.createElement('span');desc.textContent=item.label+' · '+new Date(item.created_at).toLocaleString()+' · '+item.document_count+' document references';
+  const restore=document.createElement('button');restore.className='btn';restore.textContent='Restore';restore.addEventListener('click',()=>{
+   if(!window.confirm('Restore this version? Current unsaved changes will be replaced.'))return;
+   const d=item.snapshot;
+   values={...d.values};verified={...d.verified};evidence={...d.evidence};
+   files=d.documents.map(f=>({...f,restored:true}));localFiles.clear();
+   for(const key of Object.keys(scheduleDates))delete scheduleDates[key];
+   for(const key of Object.keys(scheduleCompleted))delete scheduleCompleted[key];
+   Object.assign(scheduleDates,d.scheduleDates);Object.assign(scheduleCompleted,d.scheduleCompleted);
+   build();renderSchedule();render();saveDraft();
+   document.getElementById('draftStatus').textContent='Restored version: '+item.label+'. Re-upload source documents before packet export.';
+  });
+  row.append(desc,restore);root.append(row)
+ }
+}
+function snapshotData(){return {values:{...values},verified:{...verified},evidence:JSON.parse(JSON.stringify(evidence)),documents:files.map(f=>({name:f.name,size:f.size,category:f.category})),scheduleDates:{...scheduleDates},scheduleCompleted:{...scheduleCompleted}}}
+document.getElementById('saveSnapshot').addEventListener('click',()=>{
+ if(!rules)return;
+ const label=document.getElementById('snapshotLabel').value.trim();
+ if(!label){alert('Enter a version label first.');return}
+ const history=readHistory();const snapshot=snapshotData();
+ history.push({id:Date.now()+'-'+Math.random().toString(36).slice(2,8),label:label.slice(0,100),created_at:new Date().toISOString(),rule_pack_version:rules.version,document_count:snapshot.documents.length,snapshot});
+ try{localStorage.setItem(HISTORY_KEY,JSON.stringify(history));document.getElementById('snapshotLabel').value='';renderHistory()}catch{alert('Browser storage is full or unavailable. Export the project JSON instead.')}
+});
+document.getElementById('exportSnapshots').addEventListener('click',()=>download('westminster-version-history.json',JSON.stringify({schema_version:'tribit-browser-history-v1',versions:readHistory()},null,2),'application/json'));
+renderHistory();
 let saveTimer;
 function saveDraft(){if(!rules)return;try{localStorage.setItem(DRAFT_KEY,JSON.stringify({saved_at:new Date().toISOString(),values,verified,evidence,documents:files.map(f=>({name:f.name,size:f.size,category:f.category,needs_reupload:!!f.restored})),scheduleDates,scheduleCompleted}));document.getElementById('draftStatus').textContent='Draft saved in this browser · '+new Date().toLocaleTimeString()}catch{document.getElementById('draftStatus').textContent='Browser storage unavailable. Export JSON to retain your work.'}}
 function queueSave(){clearTimeout(saveTimer);saveTimer=setTimeout(saveDraft,500)}
@@ -206,7 +239,7 @@ document.getElementById('downloadPacket').addEventListener('click',async()=>{
   zip.file('draft-packet.json',JSON.stringify(packetBundle,null,2));
   zip.file('project-narrative-DRAFT.txt',packetBundle.project_narrative);
   zip.file('missing-items.json',JSON.stringify({required_fields:packetBundle.missing_required_fields,required_documents:packetBundle.missing_required_documents,conditional_review:packetBundle.conditional_review_items},null,2));
-  zip.file('submission-manifest.json',JSON.stringify({generated_at:new Date().toISOString(),jurisdiction:rules.jurisdiction,rule_pack_version:rules.version,attachments:manifest,populated_form:populatedForm?{path:'forms/'+populatedForm.name,source_filename:officialPdf.name,fields_filled:populatedForm.count,mappings:populatedForm.mappings,status:'DRAFT_REVIEW_REQUIRED'}:null,official_forms_included:!!populatedForm,ready_for_submission:false,requires_human_review:true},null,2));
+  zip.file('submission-manifest.json',JSON.stringify({generated_at:new Date().toISOString(),jurisdiction:rules.jurisdiction,rule_pack_version:rules.version,version_history_count:readHistory().length,attachments:manifest,populated_form:populatedForm?{path:'forms/'+populatedForm.name,source_filename:officialPdf.name,fields_filled:populatedForm.count,mappings:populatedForm.mappings,status:'DRAFT_REVIEW_REQUIRED'}:null,official_forms_included:!!populatedForm,ready_for_submission:false,requires_human_review:true},null,2));
   zip.file('READ_ME_FIRST.txt','TRIBIT H4H | WESTMINSTER WORKING PACKET\\n\\nNOT AN OFFICIAL APPLICATION OR SUBMISSION-READY PACKET.\\nAny included populated form is a draft requiring line-by-line human review. Signatures, applicable technical plans, fees and city requirements must be independently confirmed.\\nIncluded attachments have not been checked for accuracy or sufficiency.\\nFiles marked NOT_INCLUDED_REUPLOAD_REQUIRED were not available in this browser session.\\n');
   const blob=await zip.generateAsync({type:'blob',compression:'DEFLATE',compressionOptions:{level:4}});
   const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='westminster-working-packet.zip';document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),30000);
