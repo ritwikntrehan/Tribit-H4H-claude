@@ -31,7 +31,7 @@
 <aside class="panel right"><h2>Packet readiness</h2><div class="metric" id="pct">0%</div><div class="muted">Core project fields entered</div><div class="bar"><div id="progress"></div></div><h3>Required or likely materials</h3><div id="checklist"></div><h3>Official Westminster sources</h3><div class="links"><a target="_blank" rel="noopener" href="https://www.westminster-ca.gov/home/showpublisheddocument/536/637544150393130000">Development Review packet (PL-101)</a><a target="_blank" rel="noopener" href="https://www.westminster-ca.gov/departments/community-development/planning-division/applications-forms-and-permits">Current planning forms and fees</a><a target="_blank" rel="noopener" href="https://www.westminster-ca.gov/departments/community-development/planning-division/development-review-process">Development Review process</a></div><div class="note">Checklist is illustrative and may change based on parcel, zoning, affordable-housing provisions, and city review.</div></aside></div><p class="foot">Tribit-H4H · Open-source interface demonstration · Local browser state only · No backend, AI API, storage or automated submission.</p></main>
 <script>
 (()=>{'use strict';
-const RULES_URL='../westminster/rules/development-review.v0.1.json';
+const RULES_URL='./data/development-review.v0.1.json';
 const groups={project:['property.','project.'],people:['applicant.','owner.','agent.','architect.']};
 let rules=null,values={},verified={},files=[],step='project';
 const originalProject=document.getElementById('project'),originalPeople=document.getElementById('people');
