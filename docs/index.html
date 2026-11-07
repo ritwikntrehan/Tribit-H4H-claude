@@ -351,7 +351,8 @@ document.getElementById('downloadPreflight').addEventListener('click',()=>{if(pr
 
 const CLAUDE_API_BASE=String(window.H4H_API_BASE||'').replace(/\/$/,''); // Public endpoint only; no secrets.
 let extractedPages=[];
-const claudeButton=document.getElementById('claudeExtract');\nconst fileInput=document.getElementById('files');
+const claudeButton=document.getElementById('claudeExtract');
+const fileInput=document.getElementById('files');
 const suggestionEl=document.getElementById('suggestions');
 const extractionStatus=document.getElementById('extractionStatus');
 let suggestions=[];
