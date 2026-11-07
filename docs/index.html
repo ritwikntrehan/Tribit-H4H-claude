@@ -25,12 +25,13 @@
 <label class="wide">Authorized agent<input data-field="agent" placeholder="If applicable"></label>
 </div><div class="note">Owner authorization and signatures must be completed by real authorized persons. The demo does not sign documents.</div></div>
 <div id="uploads"><h2>Start with the documents you have</h2><p>Upload a deed or title report to suggest property and ownership facts, or continue without documents. You can add records later.</p><div class="note"><strong>Helpful starting documents:</strong> Grant deed or title report for owner, APN and legal description; survey or site plan for site facts; project description and architectural plans for development details. Only text-based PDF and TXT extraction is implemented today.</div><div class="file"><label for="files">Select text-based PDF or TXT files</label><input id="files" type="file" multiple accept=".pdf,.txt"></div><div id="filelist" style="margin-top:15px"></div><div class="note"><strong>Optional Claude extraction:</strong> Requires a separately deployed private backend. If enabled, extracted document text is sent to that backend and Anthropic only after you choose to run it. Do not use confidential documents until your organization approves the data handling.</div><div class="actions"><button class="btn" id="claudeExtract" disabled>Analyze selected documents with Claude</button></div><h3>Extraction suggestions</h3><div id="extractionStatus" class="muted" aria-live="polite">Select a PDF or TXT file to inspect.</div><div id="suggestions"></div><h3>Review selected evidence</h3><div id="evidenceReview" class="note" aria-live="polite">Select an extraction suggestion to inspect its source and confirm or correct the value.</div><div class="note">Local heuristic extraction only. Text-based PDFs require a PDF reader library loaded from a public CDN. No document bytes are sent to our server. Scanned PDFs, images, and DOCX are not supported. Review every proposed value against the original document.</div></div>
-<div id="packet" class="hide"><h2>Stage 4 · Application draft generator</h2><p>Generate a structured Development Review draft, project narrative, and missing-materials report. Official city PDFs and technical drawings are not produced.</p><div class="actions"><button class="btn primary" id="generatePacket">Generate packet drafts</button><button class="btn" id="downloadPacket" disabled>Download packet bundle (JSON)</button></div><div id="packetStatus" class="note" aria-live="polite">No packet generated. Generate after reviewing the intake fields.</div><h3>Draft narrative</h3><div id="narrativePreview" class="out">Not generated</div><h3>Outstanding items</h3><div id="missingPreview" class="out">Not generated</div><h3>Stage 5 · Preflight review</h3><div class="actions"><button class="btn" id="runPreflight">Run preflight checks</button><button class="btn" id="downloadPreflight" disabled>Download preflight JSON</button></div><div id="preflightStatus" class="note" aria-live="polite">No preflight run yet.</div><div id="preflightPreview" class="out">Run preflight to see findings and required actions.</div><div id="preview" class="out"></div><div class="actions"><button class="btn primary" id="downloadTxt">Download draft summary</button><button class="btn" id="downloadJson2">Export project JSON</button></div><div class="note">Do not file this preview as a Westminster application. Official forms, current instructions, plans, required studies, signatures and city confirmation remain necessary.</div></div>
+<div id="packet" class="hide"><h2>Stage 4 · Application draft generator</h2><p>Generate a structured Development Review draft, project narrative, and missing-materials report. Official city PDFs and technical drawings are not produced.</p><div class="actions"><button class="btn primary" id="generatePacket">Generate packet drafts</button><button class="btn" id="downloadPacket" disabled>Download draft packet ZIP</button></div><div id="packetStatus" class="note" aria-live="polite">No packet generated. Generate after reviewing the intake fields.</div><h3>Draft narrative</h3><div id="narrativePreview" class="out">Not generated</div><h3>Outstanding items</h3><div id="missingPreview" class="out">Not generated</div><h3>Stage 5 · Preflight review</h3><div class="actions"><button class="btn" id="runPreflight">Run preflight checks</button><button class="btn" id="downloadPreflight" disabled>Download preflight JSON</button></div><div id="preflightStatus" class="note" aria-live="polite">No preflight run yet.</div><div id="preflightPreview" class="out">Run preflight to see findings and required actions.</div><div id="preview" class="out"></div><div class="actions"><button class="btn primary" id="downloadTxt">Download draft summary</button><button class="btn" id="downloadJson2">Export project JSON</button></div><div class="note">Do not file this preview as a Westminster application. Official forms, current instructions, plans, required studies, signatures and city confirmation remain necessary.</div></div>
 <div class="actions" id="globalActions"><button class="btn primary" id="next">Continue →</button><button class="btn" id="export">Export JSON</button><button class="btn" id="importBtn">Import JSON</button><input type="file" id="import" accept=".json,application/json" hidden></div>
 </section>
 <aside class="panel right"><h2>Packet readiness</h2><div class="metric" id="pct">0%</div><div class="muted">Core project fields entered</div><div class="bar"><div id="progress"></div></div><h3>Required or likely materials</h3><div id="checklist"></div><h3>Official Westminster sources</h3><div class="links"><a target="_blank" rel="noopener" href="https://www.westminster-ca.gov/home/showpublisheddocument/536/637544150393130000">Development Review packet (PL-101)</a><a target="_blank" rel="noopener" href="https://www.westminster-ca.gov/departments/community-development/planning-division/applications-forms-and-permits">Current planning forms and fees</a><a target="_blank" rel="noopener" href="https://www.westminster-ca.gov/departments/community-development/planning-division/development-review-process">Development Review process</a></div><div class="note">Checklist is illustrative and may change based on parcel, zoning, affordable-housing provisions, and city review.</div></aside></div><p class="foot">Tribit-H4H · Open-source interface demonstration · Local browser state only · No backend, API keys, storage or automated submission. Drafts are generated locally.</p></main>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script src="./config.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script>
 (()=>{'use strict';
 const RULES_URL='./data/development-review.v0.1.json';
@@ -106,7 +107,7 @@ function packetDraft(){
  const value=id=>String(values[id]||'').trim();
  const missingFields=rules.fields.filter(f=>f.requirement==='required'&&!value(f.id)).map(f=>({id:f.id,label:f.label,reason:'Required intake field missing'}));
  const requiredDocs=rules.documents.filter(d=>d.requirement==='required');
- const missingDocs=requiredDocs.filter(d=>!files.some(f=>f.category===d.id)).map(d=>({id:d.id,label:d.label,reason:'No document classified in this category; selected filenames do not verify contents'}));
+ const missingDocs=requiredDocs.filter(d=>!files.some(f=>f.category===d.id&&!f.restored)).map(d=>({id:d.id,label:d.label,reason:'No document classified in this category; selected filenames do not verify contents'}));
  const conditional=rules.documents.filter(d=>d.requirement!=='required').map(d=>({id:d.id,label:d.label,requirement:d.requirement,reason:'Applicability requires human/city confirmation'}));
  const issues=[...missingFields,...missingDocs,...conditional];
  const prose=(id,empty='[NOT PROVIDED]')=>value(id)||empty;
@@ -140,7 +141,32 @@ document.getElementById('generatePacket').addEventListener('click',()=>{
 });
 document.getElementById('resultPacket').addEventListener('click',()=>{navigate('packet');document.getElementById('generatePacket').click()});
 document.getElementById('resultExport').addEventListener('click',()=>download('westminster-action-report.json',JSON.stringify(runPreflight(),null,2),'application/json'));
-document.getElementById('downloadPacket').addEventListener('click',()=>{if(packetBundle)download('westminster-application-draft-bundle.json',JSON.stringify(packetBundle,null,2),'application/json')});
+document.getElementById('downloadPacket').addEventListener('click',async()=>{
+ if(!packetBundle)return;
+ if(!window.JSZip){alert('ZIP library unavailable. Check your connection and retry.');return}
+ const btn=document.getElementById('downloadPacket');btn.disabled=true;btn.textContent='Assembling ZIP…';
+ try{
+  const zip=new window.JSZip();const attachments=zip.folder('attachments');const used=new Set();
+  const manifest=[];
+  for(const record of files){
+   const original=localFiles.get(record.name);
+   if(!original||record.restored){manifest.push({name:record.name,category:record.category,status:'NOT_INCLUDED_REUPLOAD_REQUIRED'});continue}
+   let safe=record.name.replace(/[^a-zA-Z0-9._-]/g,'_').replace(/^\.+/,'').slice(0,120)||'attachment';
+   const stem=safe;let suffix=2;while(used.has(safe)){safe=suffix+++'_'+stem}used.add(safe);
+   attachments.file(safe,original);
+   manifest.push({name:record.name,archive_path:'attachments/'+safe,category:record.category,status:'INCLUDED_UNVERIFIED',size:original.size});
+  }
+  zip.file('intake.json',JSON.stringify(data(),null,2));
+  zip.file('draft-packet.json',JSON.stringify(packetBundle,null,2));
+  zip.file('project-narrative-DRAFT.txt',packetBundle.project_narrative);
+  zip.file('missing-items.json',JSON.stringify({required_fields:packetBundle.missing_required_fields,required_documents:packetBundle.missing_required_documents,conditional_review:packetBundle.conditional_review_items},null,2));
+  zip.file('submission-manifest.json',JSON.stringify({generated_at:new Date().toISOString(),jurisdiction:rules.jurisdiction,rule_pack_version:rules.version,attachments:manifest,official_forms_included:false,ready_for_submission:false,requires_human_review:true},null,2));
+  zip.file('READ_ME_FIRST.txt','TRIBIT H4H | WESTMINSTER WORKING PACKET\\n\\nNOT AN OFFICIAL APPLICATION OR SUBMISSION-READY PACKET.\\nOfficial Westminster forms, signatures, applicable technical plans, fees and city requirements must be independently confirmed.\\nIncluded attachments have not been checked for accuracy or sufficiency.\\nFiles marked NOT_INCLUDED_REUPLOAD_REQUIRED were not available in this browser session.\\n');
+  const blob=await zip.generateAsync({type:'blob',compression:'DEFLATE',compressionOptions:{level:4}});
+  const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='westminster-working-packet.zip';document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),30000);
+  document.getElementById('packetStatus').textContent='Working ZIP exported with '+manifest.filter(x=>x.status==='INCLUDED_UNVERIFIED').length+' source files. Official forms and city verification still required.';
+ }catch(err){alert('Could not assemble ZIP: '+err.message)}finally{btn.disabled=false;btn.textContent='Download draft packet ZIP'}
+});
 let preflightReport=null;
 function runPreflight(){
  const issues=[];
