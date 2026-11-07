@@ -160,6 +160,16 @@ function renderDevelopment(){
  });
  const addBuilding=document.createElement('button');addBuilding.className='btn';addBuilding.textContent='Add building';addBuilding.addEventListener('click',()=>{development.buildings.push({label:'',units:1,parcel_apn:''});renderDevelopment();queueSave()});root.append(addBuilding);
 }
+function intakeConsistencyIssues(){
+ const issues=[];const val=id=>String(values[id]||'').trim();
+ const proposed=val('project.proposed_units'),existing=val('project.existing_units');
+ for(const [id,label,raw,minimum] of [['project.proposed_units','Proposed homes',proposed,1],['project.existing_units','Existing homes',existing,0]]){
+  if(raw&&(!/^\d+$/.test(raw)||!Number.isSafeInteger(Number(raw))||Number(raw)<minimum))issues.push({id,label,detail:'Enter a whole number of at least '+minimum+'.'});
+ }
+ if(development.parcels.length&&val('property.apn')&&!development.parcels.some(p=>p.apn.trim()===val('property.apn')))issues.push({id:'property.apn',label:'Primary APN',detail:'Primary APN does not match any parcel in the development schedule.'});
+ if(development.housing_type==='single_family'&&development.buildings.some(b=>Number(b.units)!==1))issues.push({id:'development.housing_type',label:'Detached single-family buildings',detail:'Each detached single-family building should contain one home. Confirm housing type or building schedule.'});
+ return issues;
+}
 function developmentIssues(){
  const issues=[],apns=new Set();
  for(const [i,p] of development.parcels.entries()){
@@ -252,7 +262,7 @@ function packetDraft(){
   'This is an intake-based draft only. No zoning compliance, CEQA exemption, density bonus, utility capacity, subdivision approval, or Development Review findings are established by this document.',
   'The city must confirm the applicable review pathway and current submittal requirements. Signatures, certified technical studies, and official forms are not generated.'
  ].join('\n');
- return {format:'tribit-westminster-packet-draft-v1',generated_at:new Date().toISOString(),jurisdiction:rules.jurisdiction,rule_pack_version:rules.version,application_fields:data().fields,project_narrative:narrative,document_inventory:data().documents,missing_required_fields:missingFields,missing_required_documents:missingDocs,conditional_review_items:conditional,development_issues:developmentIssues(),approval_prediction:null,city_completeness_determination:false,human_approved:false,auto_submit:false}
+ return {format:'tribit-westminster-packet-draft-v1',generated_at:new Date().toISOString(),jurisdiction:rules.jurisdiction,rule_pack_version:rules.version,application_fields:data().fields,project_narrative:narrative,document_inventory:data().documents,missing_required_fields:missingFields,missing_required_documents:missingDocs,conditional_review_items:conditional,development_issues:developmentIssues(),intake_consistency_issues:intakeConsistencyIssues(),approval_prediction:null,city_completeness_determination:false,human_approved:false,auto_submit:false}
 }
 document.getElementById('generatePacket').addEventListener('click',()=>{
  if(!rules)return;
@@ -287,11 +297,12 @@ document.getElementById('downloadPacket').addEventListener('click',async()=>{
    populatedForm=await makeMappedPdf();
    zip.folder('forms').file(populatedForm.name,populatedForm.bytes);
   }
+  zip.file('preflight-report.json',JSON.stringify(runPreflight(),null,2));
   zip.file('intake.json',JSON.stringify(data(),null,2));
   zip.file('development-schedule.json',JSON.stringify({development:normalizeDevelopment(development),validation_issues:developmentIssues()},null,2));
   zip.file('draft-packet.json',JSON.stringify(packetBundle,null,2));
   zip.file('project-narrative-DRAFT.txt',packetBundle.project_narrative);
-  zip.file('missing-items.json',JSON.stringify({required_fields:packetBundle.missing_required_fields,required_documents:packetBundle.missing_required_documents,conditional_review:packetBundle.conditional_review_items},null,2));
+  zip.file('missing-items.json',JSON.stringify({required_fields:packetBundle.missing_required_fields,required_documents:packetBundle.missing_required_documents,conditional_review:packetBundle.conditional_review_items,development_issues:packetBundle.development_issues,intake_consistency_issues:packetBundle.intake_consistency_issues},null,2));
   zip.file('submission-manifest.json',JSON.stringify({generated_at:new Date().toISOString(),jurisdiction:rules.jurisdiction,rule_pack_version:rules.version,version_history_count:readHistory().length,attachments:manifest,populated_form:populatedForm?{path:'forms/'+populatedForm.name,source_filename:officialPdf.name,fields_filled:populatedForm.count,mappings:populatedForm.mappings,status:'DRAFT_REVIEW_REQUIRED'}:null,official_forms_included:!!populatedForm,ready_for_submission:false,requires_human_review:true},null,2));
   zip.file('READ_ME_FIRST.txt','TRIBIT H4H | WESTMINSTER WORKING PACKET\\n\\nNOT AN OFFICIAL APPLICATION OR SUBMISSION-READY PACKET.\\nAny included populated form is a draft requiring line-by-line human review. Signatures, applicable technical plans, fees and city requirements must be independently confirmed.\\nIncluded attachments have not been checked for accuracy or sufficiency.\\nFiles marked NOT_INCLUDED_REUPLOAD_REQUIRED were not available in this browser session.\\n');
   const blob=await zip.generateAsync({type:'blob',compression:'DEFLATE',compressionOptions:{level:4}});
@@ -308,6 +319,7 @@ function runPreflight(){
   if(f.requirement==='required'&&!value)issue('field:'+f.id,'intake','blocker',f.label,'Required field is blank.','Enter the correct value from a source document or authorized person.',rules.sources[f.source]||null);
   else if(value&&!verified[f.id])issue('verify:'+f.id,'evidence','review',f.label,'Field is populated but not confirmed by a human.','Compare against the original source and confirm before submission.',null);
  }
+ for(const check of intakeConsistencyIssues())issue('consistency:'+check.id,'consistency','blocker',check.label,check.detail,'Correct the intake value and confirm it again.');
  for(const [i,message] of developmentIssues().entries())issue('development:'+i,'development','blocker','Development structure',message,'Correct parcel and building details before generating a final packet.');
  for(const d of rules.documents){
   const matched=files.filter(f=>f.category===d.id&&!f.restored);const pending=files.some(f=>f.category===d.id&&f.restored);
