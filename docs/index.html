@@ -471,7 +471,7 @@ claudeButton.addEventListener('click',async()=>{
  claudeButton.disabled=true;extractionStatus.textContent='Requesting Claude extraction…';
  try{
   const pages=extractedPages.slice(0,80);
-  const res=await fetch(CLAUDE_API_BASE.replace(/\\/$/,'')+'/api/extract',{method:'POST',headers:{'Content-Type':'application/json','X-H4H-Token':accessToken},body:JSON.stringify({pages})});
+  const res=await fetch(CLAUDE_API_BASE.replace(/\/$/,'')+'/api/extract',{method:'POST',headers:{'Content-Type':'application/json','X-H4H-Token':accessToken},body:JSON.stringify({pages})});
   if(!res.ok)throw Error('Extraction service returned HTTP '+res.status);
   const body=await res.json();if(!Array.isArray(body.candidates))throw Error('Invalid response');
   suggestions.push(...body.candidates.filter(c=>rules.fields.some(f=>f.id===c.id)&&typeof c.value==='string'&&localFiles.has(c.name)));
