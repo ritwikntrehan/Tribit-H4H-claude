@@ -36,6 +36,7 @@
 <script>
 (()=>{'use strict';
 const RULES_URL='./data/development-review.v0.1.json';
+const CITY_RULES={Westminster:RULES_URL,Stanton:'./data/stanton-pilot.v0.1.json','Garden Grove':'./data/garden-grove-pilot.v0.1.json'};
 const groups={project:['property.','project.'],people:['applicant.','owner.','agent.','architect.']};
 let rules=null,values={},verified={},files=[],evidence={},localFiles=new Map(),step='uploads';
 const scheduleDates={};
@@ -105,7 +106,7 @@ document.getElementById('saveSnapshot').addEventListener('click',()=>{
 document.getElementById('exportSnapshots').addEventListener('click',()=>download('westminster-version-history.json',JSON.stringify({schema_version:'tribit-browser-history-v1',versions:readHistory()},null,2),'application/json'));
 renderHistory();
 let saveTimer;
-function saveDraft(){if(!rules)return;try{localStorage.setItem(DRAFT_KEY,JSON.stringify({saved_at:new Date().toISOString(),values,verified,evidence,documents:files.map(f=>({name:f.name,size:f.size,category:f.category,needs_reupload:!!f.restored})),scheduleDates,scheduleCompleted,development}));document.getElementById('draftStatus').textContent='Draft saved in this browser · '+new Date().toLocaleTimeString()}catch{document.getElementById('draftStatus').textContent='Browser storage unavailable. Export JSON to retain your work.'}}
+function saveDraft(){if(!rules||rules.jurisdiction!=='Westminster, CA')return;try{localStorage.setItem(DRAFT_KEY,JSON.stringify({saved_at:new Date().toISOString(),values,verified,evidence,documents:files.map(f=>({name:f.name,size:f.size,category:f.category,needs_reupload:!!f.restored})),scheduleDates,scheduleCompleted,development}));document.getElementById('draftStatus').textContent='Draft saved in this browser · '+new Date().toLocaleTimeString()}catch{document.getElementById('draftStatus').textContent='Browser storage unavailable. Export JSON to retain your work.'}}
 function queueSave(){clearTimeout(saveTimer);saveTimer=setTimeout(saveDraft,500)}
 function restoreDraft(){try{const raw=localStorage.getItem(DRAFT_KEY);if(!raw)return;const d=JSON.parse(raw);if(!d||typeof d.values!=='object')return;values=Object.fromEntries(Object.entries(d.values).filter(([k,v])=>rules.fields.some(f=>f.id===k)&&typeof v==='string'));verified=Object.fromEntries(Object.entries(d.verified||{}).filter(([k,v])=>rules.fields.some(f=>f.id===k)&&v===true));evidence=d.evidence&&typeof d.evidence==='object'?d.evidence:{};files=Array.isArray(d.documents)?d.documents.filter(x=>x&&typeof x.name==='string').map(x=>({...x,restored:true})):[];Object.assign(scheduleDates,d.scheduleDates||{});Object.assign(scheduleCompleted,d.scheduleCompleted||{});if(d.development&&typeof d.development==='object')development=normalizeDevelopment(d.development);document.getElementById('draftStatus').textContent='Restored browser draft from '+new Date(d.saved_at).toLocaleString()+'. Re-upload source files before generating a packet.';}catch{document.getElementById('draftStatus').textContent='Saved draft could not be restored.'}}
 
@@ -122,9 +123,32 @@ const nextCities=[
 ];
 const cityNames=["Aliso Viejo","Anaheim","Brea","Buena Park","Costa Mesa","Cypress","Dana Point","Fountain Valley","Fullerton","Garden Grove","Huntington Beach","Irvine","La Habra","La Palma","Laguna Beach","Laguna Hills","Laguna Niguel","Laguna Woods","Lake Forest","Los Alamitos","Mission Viejo","Newport Beach","Orange","Placentia","Rancho Santa Margarita","San Clemente","San Juan Capistrano","Santa Ana","Seal Beach","Stanton","Tustin","Villa Park","Westminster","Yorba Linda"];
 const citySelect=document.getElementById('citySelect');
-for(const name of cityNames){const opt=document.createElement('option');opt.value=name;opt.textContent=name+(name==='Westminster'?' · supported':nextCities.some(c=>c.name===name)?' · forms researched':' · coming later');citySelect.append(opt)}
+for(const name of cityNames){const opt=document.createElement('option');opt.value=name;opt.textContent=name+(name==='Westminster'?' · supported':CITY_RULES[name]?' · pilot intake':nextCities.some(c=>c.name===name)?' · forms researched':' · coming later');citySelect.append(opt)}
 citySelect.value='Westminster';
-citySelect.addEventListener('change',()=>{const supported=citySelect.value==='Westminster';document.getElementById('cityStatus').textContent=supported?'Westminster Development Review workflow available':'Workflow not yet mapped for '+citySelect.value+'. Westminster rules must not be used for this city.';document.getElementById('cityStatus').className=supported?'muted':'city-pending';document.getElementById('pageTitle').textContent=supported?'Westminster development packet':citySelect.value+' · workflow pending';document.querySelectorAll('.step').forEach(b=>b.disabled=!supported);document.getElementById('next').disabled=!supported;document.getElementById('files').disabled=!supported;document.getElementById('export').disabled=!supported;document.getElementById('importBtn').disabled=!supported;document.getElementById('cityNotice').hidden=supported;const resource=document.getElementById('cityResource');resource.replaceChildren();const match=nextCities.find(c=>c.name===citySelect.value);resource.hidden=!match;if(match){const heading=document.createElement('strong');heading.textContent=match.name+' · official application resources';const detail=document.createElement('p');detail.textContent=match.note;const link=document.createElement('a');link.href=match.url;link.target='_blank';link.rel='noopener';link.textContent='View official planning application / forms';resource.append(heading,detail,link)}});
+citySelect.addEventListener('change',async()=>{
+ const city=citySelect.value,supported=!!CITY_RULES[city];
+ document.getElementById('cityStatus').textContent=supported?(city==='Westminster'?'Westminster Development Review workflow available':city+' preliminary intake pilot · requirements not city-verified'):'Workflow not yet mapped for '+city;
+ document.getElementById('cityStatus').className=supported?'muted':'city-pending';
+ document.getElementById('pageTitle').textContent=supported?city+' development intake':city+' · workflow pending';
+ document.querySelectorAll('.step').forEach(b=>b.disabled=!supported);
+ for(const id of ['next','files','export','importBtn'])document.getElementById(id).disabled=!supported;
+ document.getElementById('cityNotice').hidden=supported;
+ const resource=document.getElementById('cityResource');resource.replaceChildren();
+ const match=nextCities.find(c=>c.name===city);resource.hidden=!match;
+ if(match){const heading=document.createElement('strong');heading.textContent=match.name+' · official application resources';const detail=document.createElement('p');detail.textContent=match.note;const link=document.createElement('a');link.href=match.url;link.target='_blank';link.rel='noopener';link.textContent='View city planning application / forms';resource.append(heading,detail,link)}
+ if(!supported)return;
+ if(rules?.jurisdiction===city+', CA')return;
+ try{
+  const response=await fetch(CITY_RULES[city]);if(!response.ok)throw Error('HTTP '+response.status);
+  const nextRules=await response.json();if(!Array.isArray(nextRules.fields)||!Array.isArray(nextRules.documents)||nextRules.jurisdiction!==city+', CA')throw Error('Invalid city rules');
+  rules=nextRules;values={};verified={};evidence={};files=[];localFiles.clear();suggestions=[];extractedPages=[];
+  development={housing_type:'townhomes',parcels:[],buildings:[]};
+  for(const key of Object.keys(scheduleDates))delete scheduleDates[key];
+  for(const key of Object.keys(scheduleCompleted))delete scheduleCompleted[key];
+  invalidatePacket();build();drawFileInventory();drawSuggestions();renderSchedule();navigate('uploads');
+  document.getElementById('draftStatus').textContent='Switched to '+city+'. Started a new city-specific intake; prior city data was not copied.';
+ }catch(err){document.getElementById('cityStatus').textContent='Could not load '+city+' pilot rules: '+err.message;document.getElementById('cityStatus').className='city-pending'}
+});
 const cityNotice=document.createElement('div');cityNotice.id='cityNotice';cityNotice.className='note';cityNotice.hidden=true;cityNotice.textContent='Select Westminster to use the current application rules. Other cities do not yet have verified rules or packet generation.';const cityResource=document.createElement('div');cityResource.id='cityResource';cityResource.className='note';cityResource.hidden=true;cityNotice.after(cityResource);citySelect.after(cityNotice);
 const stages=[
  {id:'scoping',name:'1 · Pre-application scoping',detail:'Confirm entitlement pathway, city submission channel, conditional studies and required forms.',docs:'Parcel/APN, project concept, preliminary site plan',kind:'City confirmation needed'},
@@ -224,8 +248,8 @@ function developmentIssues(){
 }
 function render(){if(!rules)return;queueSave();const required=rules.fields.filter(f=>f.requirement==='required');const complete=required.filter(f=>verified[f.id]&&String(values[f.id]||'').trim()).length;const pct=required.length?Math.round(complete/required.length*100):0;document.getElementById('pct').textContent=pct+'%';document.getElementById('progress').style.width=pct+'%';checklist.replaceChildren();for(const doc of rules.documents){const row=document.createElement('div');row.className='check';const span=document.createElement('span');const uploaded=files.some(f=>f.category===doc.id&&!f.restored);const pendingReupload=files.some(f=>f.category===doc.id&&f.restored);span.textContent=doc.label;const status=document.createElement('div');status.className='status';status.textContent=doc.requirement.replace('_',' ')+(uploaded?' · file selected, not verified':pendingReupload?' · re-upload required':' · not evidenced');row.append(span,status);row.style.display='block';checklist.append(row)}document.getElementById('preview').textContent=summary();document.querySelector('.right .muted').textContent='Required Westminster fields confirmed by user';renderDashboard()}
 function navigate(s){step=s;['uploads','results','project','people','packet'].forEach(k=>document.getElementById(k).classList.toggle('hide',k!==s));document.querySelectorAll('.step').forEach(b=>b.classList.toggle('active',b.dataset.step===s));document.getElementById('next').textContent=s==='packet'?'Back to results':'Continue →';render()}
-function data(){return {schema_version:'westminster-intake-2',jurisdiction:rules.jurisdiction,rule_pack_version:rules.version,fields:Object.fromEntries(rules.fields.map(f=>[f.id,{value:values[f.id]||null,status:verified[f.id]?'human_confirmed':values[f.id]?'unverified':'missing'}])),documents:files.map(f=>({name:f.name,size:f.size,category:f.category,needs_reupload:!!f.restored})),development:normalizeDevelopment(development),schedule:stages.map(x=>({stage:x.id,label:x.name,deadline:scheduleDates[x.id]||null,completed_by_user:!!scheduleCompleted[x.id],deadline_source:'user-entered; not city-verified'})),evidence,human_approved:false,auto_submit:false}}
-const exportJson=()=>{if(rules)download('westminster-intake.json',JSON.stringify(data(),null,2),'application/json')};
+function data(){return {schema_version:'tribit-city-intake-2',jurisdiction:rules.jurisdiction,rule_pack_version:rules.version,fields:Object.fromEntries(rules.fields.map(f=>[f.id,{value:values[f.id]||null,status:verified[f.id]?'human_confirmed':values[f.id]?'unverified':'missing'}])),documents:files.map(f=>({name:f.name,size:f.size,category:f.category,needs_reupload:!!f.restored})),development:normalizeDevelopment(development),schedule:stages.map(x=>({stage:x.id,label:x.name,deadline:scheduleDates[x.id]||null,completed_by_user:!!scheduleCompleted[x.id],deadline_source:'user-entered; not city-verified'})),evidence,human_approved:false,auto_submit:false}}
+const exportJson=()=>{if(rules)download(citySelect.value.toLowerCase().replace(/\s+/g,'-')+'-intake.json',JSON.stringify(data(),null,2),'application/json')};
 document.querySelectorAll('.step').forEach(b=>b.addEventListener('click',()=>navigate(b.dataset.step)));
 document.getElementById('next').addEventListener('click',()=>{const a=['uploads','results','project','people','packet'];navigate(a[(a.indexOf(step)+1)%a.length])});
 document.getElementById('export').addEventListener('click',exportJson);document.getElementById('downloadJson2').addEventListener('click',exportJson);
@@ -283,7 +307,7 @@ function packetDraft(){
  const prose=(id,empty='[NOT PROVIDED]')=>value(id)||empty;
  const narrative=[
   'PROJECT DESCRIPTION | DRAFT FOR HUMAN REVIEW',
-  'Jurisdiction: Westminster, California',
+  'Jurisdiction: '+rules.jurisdiction,
   'Site address: '+prose('property.address'),
   'Assessor parcel number: '+prose('property.apn'),
   'Zoning: '+prose('property.zoning'),
@@ -367,7 +391,7 @@ function runPreflight(){
  }
  const units=String(values['project.proposed_units']||'').trim();
  if(units&&!/^\d+$/.test(units))issue('units-invalid','consistency','blocker','Proposed unit count','Expected a nonnegative whole number.','Correct the unit count.',null);
- else if(units&&Number(units)>=3)issue('dr-pathway','applicability','city_review','Development Review pathway','Three or more new residential units may trigger Development Review; statutory alternatives and exemptions require separate analysis.','Confirm pathway with Westminster Planning.',rules.sources.applicability);
+ else if(rules.jurisdiction==='Westminster, CA'&&units&&Number(units)>=3)issue('dr-pathway','applicability','city_review','Development Review pathway','Three or more new residential units may trigger Development Review; statutory alternatives and exemptions require separate analysis.','Confirm pathway with Westminster Planning.',rules.sources.applicability);
  if(values['property.apn']&&!/^\\d{3}[- ]?\\d{3}[- ]?\\d{2,4}$/.test(String(values['property.apn']).trim()))issue('apn-format','consistency','review','APN format','APN does not match the expected local numeric pattern.','Verify against the county assessor record.',null);
  for(const s of suggestions){const current=String(values[s.id]||'').trim();if(current&&s.value!==current&&evidence[s.id]?.file!==s.name)issue('conflict:'+s.id+':'+s.name+':'+s.page,'conflict','review',rules.fields.find(f=>f.id===s.id)?.label||s.id,'Document '+s.name+' page '+s.page+' suggests "'+s.value+'" but intake has "'+current+'".','Inspect both sources; resolve and document which is authoritative.',null)}
  for(const rule of rules.rules||[]){if(String(rule.id).startsWith('DR-FINDING'))issue('finding:'+rule.id,'planning','city_review',rule.id,'The rule pack identifies a discretionary finding; no evidence-based compliance determination is implemented.','Obtain relevant plans, studies, and planning review.',rules.sources[rule.source]||null)}
@@ -492,7 +516,7 @@ document.getElementById('import').addEventListener('change',async e=>{
  const file=e.target.files[0];if(!file)return;
  try{
   const d=JSON.parse(await file.text());
-  if(!rules||d.jurisdiction!=='Westminster, CA'||!d.fields||typeof d.fields!=='object')throw Error('Expected Westminster intake JSON with fields');
+  if(!rules||d.jurisdiction!==rules.jurisdiction||!d.fields||typeof d.fields!=='object')throw Error('Expected '+rules.jurisdiction+' intake JSON with fields');
   if(Object.values(values).some(v=>String(v||'').trim())&&!window.confirm('Import will replace the current intake. Continue?'))return;
   const imported={};
   for(const f of rules.fields){const entry=d.fields[f.id];if(entry&&(typeof entry.value==='string'||typeof entry.value==='number'))imported[f.id]=String(entry.value).slice(0,3000)}
