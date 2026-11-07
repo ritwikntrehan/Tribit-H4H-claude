@@ -1,0 +1,248 @@
+{
+  "jurisdiction": "Stanton, CA",
+  "workflow": "Preliminary planning intake and document inventory",
+  "scenario": "New residential development",
+  "version": "stanton-pilot-v0.1",
+  "review_status": "UNVERIFIED_REQUIREMENTS_CITY_CONFIRMATION_REQUIRED",
+  "sources": {
+    "packet": "https://cms9files.revize.com/stantonca/Document_center/Community%20Development/2025%20Planning%20Permit%20Application.pdf",
+    "forms": "https://cms9files.revize.com/stantonca/Document_center/Community%20Development/2025%20Planning%20Permit%20Application.pdf",
+    "applicability": "https://cms9files.revize.com/stantonca/Document_center/Community%20Development/2025%20Planning%20Permit%20Application.pdf"
+  },
+  "fields": [
+    {
+      "id": "property.address",
+      "label": "Property address/location",
+      "source": "forms",
+      "requirement": "required",
+      "autofill_policy": "evidence_or_human_only",
+      "review": "human_confirm"
+    },
+    {
+      "id": "property.apn",
+      "label": "Assessor parcel number",
+      "source": "forms",
+      "requirement": "required",
+      "autofill_policy": "evidence_or_human_only",
+      "review": "human_confirm"
+    },
+    {
+      "id": "property.zoning",
+      "label": "Zoning district",
+      "source": "forms",
+      "requirement": "needs_confirmation",
+      "autofill_policy": "evidence_or_human_only",
+      "review": "human_confirm"
+    },
+    {
+      "id": "property.general_plan",
+      "label": "General Plan designation",
+      "source": "forms",
+      "requirement": "needs_confirmation",
+      "autofill_policy": "evidence_or_human_only",
+      "review": "human_confirm"
+    },
+    {
+      "id": "property.legal_description",
+      "label": "Legal description",
+      "source": "forms",
+      "requirement": "needs_confirmation",
+      "autofill_policy": "evidence_or_human_only",
+      "review": "human_confirm"
+    },
+    {
+      "id": "project.description",
+      "label": "Project description",
+      "source": "forms",
+      "requirement": "required",
+      "autofill_policy": "evidence_or_human_only",
+      "review": "human_confirm"
+    },
+    {
+      "id": "applicant.name",
+      "label": "Applicant name",
+      "source": "forms",
+      "requirement": "required",
+      "autofill_policy": "evidence_or_human_only",
+      "review": "human_confirm"
+    },
+    {
+      "id": "applicant.address",
+      "label": "Applicant mailing address",
+      "source": "forms",
+      "requirement": "needs_confirmation",
+      "autofill_policy": "evidence_or_human_only",
+      "review": "human_confirm"
+    },
+    {
+      "id": "applicant.city",
+      "label": "Applicant city",
+      "source": "forms",
+      "requirement": "needs_confirmation",
+      "autofill_policy": "evidence_or_human_only",
+      "review": "human_confirm"
+    },
+    {
+      "id": "applicant.state",
+      "label": "Applicant state",
+      "source": "forms",
+      "requirement": "needs_confirmation",
+      "autofill_policy": "evidence_or_human_only",
+      "review": "human_confirm"
+    },
+    {
+      "id": "applicant.zip",
+      "label": "Applicant ZIP",
+      "source": "forms",
+      "requirement": "needs_confirmation",
+      "autofill_policy": "evidence_or_human_only",
+      "review": "human_confirm"
+    },
+    {
+      "id": "applicant.email",
+      "label": "Applicant email",
+      "source": "forms",
+      "requirement": "needs_confirmation",
+      "autofill_policy": "evidence_or_human_only",
+      "review": "human_confirm"
+    },
+    {
+      "id": "applicant.phone",
+      "label": "Applicant phone",
+      "source": "forms",
+      "requirement": "needs_confirmation",
+      "autofill_policy": "evidence_or_human_only",
+      "review": "human_confirm"
+    },
+    {
+      "id": "owner.name",
+      "label": "Owner name",
+      "source": "forms",
+      "requirement": "required",
+      "autofill_policy": "evidence_or_human_only",
+      "review": "human_confirm"
+    },
+    {
+      "id": "owner.address",
+      "label": "Owner mailing address",
+      "source": "forms",
+      "requirement": "needs_confirmation",
+      "autofill_policy": "evidence_or_human_only",
+      "review": "human_confirm"
+    },
+    {
+      "id": "owner.city",
+      "label": "Owner city",
+      "source": "forms",
+      "requirement": "needs_confirmation",
+      "autofill_policy": "evidence_or_human_only",
+      "review": "human_confirm"
+    },
+    {
+      "id": "owner.state",
+      "label": "Owner state",
+      "source": "forms",
+      "requirement": "needs_confirmation",
+      "autofill_policy": "evidence_or_human_only",
+      "review": "human_confirm"
+    },
+    {
+      "id": "owner.zip",
+      "label": "Owner ZIP",
+      "source": "forms",
+      "requirement": "needs_confirmation",
+      "autofill_policy": "evidence_or_human_only",
+      "review": "human_confirm"
+    },
+    {
+      "id": "owner.email",
+      "label": "Owner email",
+      "source": "forms",
+      "requirement": "needs_confirmation",
+      "autofill_policy": "evidence_or_human_only",
+      "review": "human_confirm"
+    },
+    {
+      "id": "owner.phone",
+      "label": "Owner phone",
+      "source": "forms",
+      "requirement": "needs_confirmation",
+      "autofill_policy": "evidence_or_human_only",
+      "review": "human_confirm"
+    },
+    {
+      "id": "agent.name",
+      "label": "Authorized agent name",
+      "source": "forms",
+      "requirement": "needs_confirmation",
+      "autofill_policy": "evidence_or_human_only",
+      "review": "human_confirm"
+    },
+    {
+      "id": "architect.name",
+      "label": "Architect/designer name",
+      "source": "forms",
+      "requirement": "needs_confirmation",
+      "autofill_policy": "evidence_or_human_only",
+      "review": "human_confirm"
+    },
+    {
+      "id": "project.proposed_units",
+      "label": "Proposed unit count",
+      "source": "forms",
+      "requirement": "required",
+      "autofill_policy": "evidence_or_human_only",
+      "review": "human_confirm"
+    },
+    {
+      "id": "project.existing_units",
+      "label": "Existing units on site",
+      "source": "forms",
+      "requirement": "needs_confirmation",
+      "autofill_policy": "evidence_or_human_only",
+      "review": "human_confirm"
+    },
+    {
+      "id": "project.affordability",
+      "label": "Affordability program/commitment",
+      "source": "forms",
+      "requirement": "needs_confirmation",
+      "autofill_policy": "evidence_or_human_only",
+      "review": "human_confirm"
+    }
+  ],
+  "documents": [
+    {
+      "id": "planning_application",
+      "label": "Planning permit application",
+      "requirement": "needs_confirmation",
+      "source": "forms"
+    },
+    {
+      "id": "site_plan",
+      "label": "Site plan",
+      "requirement": "needs_confirmation",
+      "source": "forms"
+    },
+    {
+      "id": "elevations",
+      "label": "Building elevations",
+      "requirement": "needs_confirmation",
+      "source": "forms"
+    },
+    {
+      "id": "owner_authorization",
+      "label": "Property owner authorization",
+      "requirement": "needs_confirmation",
+      "source": "forms"
+    },
+    {
+      "id": "project_description",
+      "label": "Project description",
+      "requirement": "needs_confirmation",
+      "source": "forms"
+    }
+  ],
+  "rules": [],
+  "gates": []
+}
