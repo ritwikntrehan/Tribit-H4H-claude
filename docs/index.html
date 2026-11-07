@@ -30,6 +30,7 @@
 </section>
 <aside class="panel right"><h2>Packet readiness</h2><div class="metric" id="pct">0%</div><div class="muted">Core project fields entered</div><div class="bar"><div id="progress"></div></div><h3>Required or likely materials</h3><div id="checklist"></div><h3>Official Westminster sources</h3><div class="links"><a target="_blank" rel="noopener" href="https://www.westminster-ca.gov/home/showpublisheddocument/536/637544150393130000">Development Review packet (PL-101)</a><a target="_blank" rel="noopener" href="https://www.westminster-ca.gov/departments/community-development/planning-division/applications-forms-and-permits">Current planning forms and fees</a><a target="_blank" rel="noopener" href="https://www.westminster-ca.gov/departments/community-development/planning-division/development-review-process">Development Review process</a></div><div class="note">Checklist is illustrative and may change based on parcel, zoning, affordable-housing provisions, and city review.</div></aside></div><p class="foot">Tribit-H4H · Open-source interface demonstration · Local browser state only · No backend, API keys, storage or automated submission. Drafts are generated locally.</p></main>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="./config.js"></script>
 <script>
 (()=>{'use strict';
 const RULES_URL='./data/development-review.v0.1.json';
@@ -169,7 +170,7 @@ document.getElementById('runPreflight').addEventListener('click',()=>{
 document.getElementById('downloadPreflight').addEventListener('click',()=>{if(preflightReport)download('westminster-preflight.json',JSON.stringify(preflightReport,null,2),'application/json')});
 
 
-const CLAUDE_API_BASE=''; // Set to your deployed HTTPS backend origin, e.g. https://your-backend.example.org (no API key here).
+const CLAUDE_API_BASE=String(window.H4H_API_BASE||'').replace(/\/$/,''); // Public endpoint only; no secrets.
 let extractedPages=[];
 const claudeButton=document.getElementById('claudeExtract');\nconst fileInput=document.getElementById('files');
 const suggestionEl=document.getElementById('suggestions');
@@ -235,10 +236,12 @@ fileInput.addEventListener('change',async e=>{
 claudeButton.addEventListener('click',async()=>{
  if(!CLAUDE_API_BASE||!extractedPages.length)return;
  if(!confirm('Send extracted document text to your configured backend and Anthropic for suggestions? Do not proceed with confidential documents without authorization.'))return;
+ const accessToken=window.prompt('Enter the pilot access token (not stored):');
+ if(!accessToken)return;
  claudeButton.disabled=true;extractionStatus.textContent='Requesting Claude extraction…';
  try{
   const pages=extractedPages.slice(0,80);
-  const res=await fetch(CLAUDE_API_BASE.replace(/\\/$/,'')+'/api/extract',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({pages})});
+  const res=await fetch(CLAUDE_API_BASE.replace(/\\/$/,'')+'/api/extract',{method:'POST',headers:{'Content-Type':'application/json','X-H4H-Token':accessToken},body:JSON.stringify({pages})});
   if(!res.ok)throw Error('Extraction service returned HTTP '+res.status);
   const body=await res.json();if(!Array.isArray(body.candidates))throw Error('Invalid response');
   suggestions.push(...body.candidates.filter(c=>rules.fields.some(f=>f.id===c.id)&&typeof c.value==='string'&&localFiles.has(c.name)));
