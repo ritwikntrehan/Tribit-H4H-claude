@@ -42,6 +42,7 @@ const scheduleDates={};
 const scheduleCompleted={};
 const DRAFT_KEY='tribit-h4h-westminster-draft-v1';
 const HISTORY_KEY='tribit-h4h-westminster-history-v1';
+let development={housing_type:'townhomes',parcels:[],buildings:[]};
 function readHistory(){try{const v=JSON.parse(localStorage.getItem(HISTORY_KEY)||'[]');return Array.isArray(v)?v:[]}catch{return []}}
 function renderHistory(){
  const root=document.getElementById('snapshotList');root.replaceChildren();const history=readHistory();
@@ -56,14 +57,14 @@ function renderHistory(){
    files=d.documents.map(f=>({...f,restored:true}));localFiles.clear();
    for(const key of Object.keys(scheduleDates))delete scheduleDates[key];
    for(const key of Object.keys(scheduleCompleted))delete scheduleCompleted[key];
-   Object.assign(scheduleDates,d.scheduleDates);Object.assign(scheduleCompleted,d.scheduleCompleted);
+   Object.assign(scheduleDates,d.scheduleDates);Object.assign(scheduleCompleted,d.scheduleCompleted);development=normalizeDevelopment(d.development||{});
    build();renderSchedule();render();saveDraft();
    document.getElementById('draftStatus').textContent='Restored version: '+item.label+'. Re-upload source documents before packet export.';
   });
   row.append(desc,restore);root.append(row)
  }
 }
-function snapshotData(){return {values:{...values},verified:{...verified},evidence:JSON.parse(JSON.stringify(evidence)),documents:files.map(f=>({name:f.name,size:f.size,category:f.category})),scheduleDates:{...scheduleDates},scheduleCompleted:{...scheduleCompleted}}}
+function snapshotData(){return {values:{...values},verified:{...verified},evidence:JSON.parse(JSON.stringify(evidence)),documents:files.map(f=>({name:f.name,size:f.size,category:f.category})),scheduleDates:{...scheduleDates},scheduleCompleted:{...scheduleCompleted},development:JSON.parse(JSON.stringify(development))}}
 document.getElementById('saveSnapshot').addEventListener('click',()=>{
  if(!rules)return;
  const label=document.getElementById('snapshotLabel').value.trim();
@@ -75,12 +76,12 @@ document.getElementById('saveSnapshot').addEventListener('click',()=>{
 document.getElementById('exportSnapshots').addEventListener('click',()=>download('westminster-version-history.json',JSON.stringify({schema_version:'tribit-browser-history-v1',versions:readHistory()},null,2),'application/json'));
 renderHistory();
 let saveTimer;
-function saveDraft(){if(!rules)return;try{localStorage.setItem(DRAFT_KEY,JSON.stringify({saved_at:new Date().toISOString(),values,verified,evidence,documents:files.map(f=>({name:f.name,size:f.size,category:f.category,needs_reupload:!!f.restored})),scheduleDates,scheduleCompleted}));document.getElementById('draftStatus').textContent='Draft saved in this browser · '+new Date().toLocaleTimeString()}catch{document.getElementById('draftStatus').textContent='Browser storage unavailable. Export JSON to retain your work.'}}
+function saveDraft(){if(!rules)return;try{localStorage.setItem(DRAFT_KEY,JSON.stringify({saved_at:new Date().toISOString(),values,verified,evidence,documents:files.map(f=>({name:f.name,size:f.size,category:f.category,needs_reupload:!!f.restored})),scheduleDates,scheduleCompleted,development}));document.getElementById('draftStatus').textContent='Draft saved in this browser · '+new Date().toLocaleTimeString()}catch{document.getElementById('draftStatus').textContent='Browser storage unavailable. Export JSON to retain your work.'}}
 function queueSave(){clearTimeout(saveTimer);saveTimer=setTimeout(saveDraft,500)}
-function restoreDraft(){try{const raw=localStorage.getItem(DRAFT_KEY);if(!raw)return;const d=JSON.parse(raw);if(!d||typeof d.values!=='object')return;values=Object.fromEntries(Object.entries(d.values).filter(([k,v])=>rules.fields.some(f=>f.id===k)&&typeof v==='string'));verified=Object.fromEntries(Object.entries(d.verified||{}).filter(([k,v])=>rules.fields.some(f=>f.id===k)&&v===true));evidence=d.evidence&&typeof d.evidence==='object'?d.evidence:{};files=Array.isArray(d.documents)?d.documents.filter(x=>x&&typeof x.name==='string').map(x=>({...x,restored:true})):[];Object.assign(scheduleDates,d.scheduleDates||{});Object.assign(scheduleCompleted,d.scheduleCompleted||{});document.getElementById('draftStatus').textContent='Restored browser draft from '+new Date(d.saved_at).toLocaleString()+'. Re-upload source files before generating a packet.';}catch{document.getElementById('draftStatus').textContent='Saved draft could not be restored.'}}
+function restoreDraft(){try{const raw=localStorage.getItem(DRAFT_KEY);if(!raw)return;const d=JSON.parse(raw);if(!d||typeof d.values!=='object')return;values=Object.fromEntries(Object.entries(d.values).filter(([k,v])=>rules.fields.some(f=>f.id===k)&&typeof v==='string'));verified=Object.fromEntries(Object.entries(d.verified||{}).filter(([k,v])=>rules.fields.some(f=>f.id===k)&&v===true));evidence=d.evidence&&typeof d.evidence==='object'?d.evidence:{};files=Array.isArray(d.documents)?d.documents.filter(x=>x&&typeof x.name==='string').map(x=>({...x,restored:true})):[];Object.assign(scheduleDates,d.scheduleDates||{});Object.assign(scheduleCompleted,d.scheduleCompleted||{});if(d.development&&typeof d.development==='object')development=normalizeDevelopment(d.development);document.getElementById('draftStatus').textContent='Restored browser draft from '+new Date(d.saved_at).toLocaleString()+'. Re-upload source files before generating a packet.';}catch{document.getElementById('draftStatus').textContent='Saved draft could not be restored.'}}
 
 const originalProject=document.getElementById('project'),originalPeople=document.getElementById('people');
-originalProject.innerHTML='<h2>Westminster application intake</h2><p>Fields are loaded from the versioned Westminster Development Review rules. Missing facts stay blank.</p><div id="projectFields" class="fields"></div><div class="note">A populated field is not verified. Confirm every fact against the source document and the city form.</div>';
+originalProject.innerHTML='<h2>Westminster application intake</h2><p>Fields are loaded from the versioned Westminster Development Review rules. Missing facts stay blank.</p><div id="projectFields" class="fields"></div><div id="developmentEditor"></div><div class="note">A populated field is not verified. Confirm every fact against the source document and the city form.</div>';
 originalPeople.innerHTML='<h2>Applicant, owner & professionals</h2><p>Enter information from the deed, title report, or authorized contacts. Signatures are not generated.</p><div id="peopleFields" class="fields"></div><div class="note">All project data remains in your browser until you export it. Avoid entering sensitive personal information into a public demo.</div>';
 
 const cityNames=["Aliso Viejo","Anaheim","Brea","Buena Park","Costa Mesa","Cypress","Dana Point","Fountain Valley","Fullerton","Garden Grove","Huntington Beach","Irvine","La Habra","La Palma","Laguna Beach","Laguna Hills","Laguna Niguel","Laguna Woods","Lake Forest","Los Alamitos","Mission Viejo","Newport Beach","Orange","Placentia","Rancho Santa Margarita","San Clemente","San Juan Capistrano","Santa Ana","Seal Beach","Stanton","Tustin","Villa Park","Westminster","Yorba Linda"];
@@ -106,7 +107,7 @@ function download(name,content,type){const a=document.createElement('a'),url=URL
 function groupOf(id){return id.startsWith('applicant.')||id.startsWith('owner.')||id.startsWith('agent.')||id.startsWith('architect.')?'people':'project'}
 function build(){for(const group of ['project','people'])document.getElementById(group+'Fields').replaceChildren();
 for(const field of rules.fields){const label=document.createElement('label');label.className=field.id==='project.description'?'wide':'';label.textContent=field.label+(field.requirement==='required'?' *':'');const input=field.id==='project.description'?document.createElement('textarea'):document.createElement('input');input.dataset.id=field.id;input.placeholder=field.requirement==='conditional'?'If applicable':'From source document';input.value=values[field.id]||'';input.addEventListener('input',()=>{values[field.id]=input.value;verified[field.id]=false;delete evidence[field.id];confirm.textContent='Confirm field';invalidatePacket();render()});label.append(input);const flag=document.createElement('div');flag.className='status';flag.textContent=field.requirement.replace('_',' ')+' · '+field.source;label.append(flag);const confirm=document.createElement('button');confirm.type='button';confirm.className='btn';confirm.style.marginTop='6px';confirm.textContent=verified[field.id]?'Confirmed':'Confirm field';confirm.addEventListener('click',()=>{if(!String(values[field.id]||'').trim()){alert('Enter a value before confirming.');return}verified[field.id]=true;if(evidence[field.id])evidence[field.id].reviewed=true;confirm.textContent='Confirmed';invalidatePacket();render()});label.append(confirm);document.getElementById(groupOf(field.id)+'Fields').append(label)}
-render()}
+render();renderDevelopment()}
 function renderDashboard(){
  const report=runPreflight();
  const fieldsFilled=rules.fields.filter(f=>String(values[f.id]||'').trim()).length;
@@ -128,9 +129,56 @@ function renderDashboard(){
  }
 }
 function summary(){const fields=rules.fields.map(f=>f.label+': '+(values[f.id]||'[MISSING]')+(verified[f.id]?' [human confirmed]':' [unverified]')).join('\n');const doc=rules.documents.map(d=>'- '+d.label+' ('+d.requirement+'): '+(files.some(f=>f.category===d.id&&!f.restored)?'attached in current session':files.some(f=>f.category===d.id&&f.restored)?'previously selected; re-upload required':'not evidenced')).join('\n');return 'TRIBIT-H4H | WESTMINSTER DRAFT INTAKE\nRule pack: '+rules.version+'\nNOT AN OFFICIAL CITY APPLICATION\n\nFIELDS\n'+fields+'\n\nDOCUMENTS\n'+doc+'\n\nNot a city completeness determination or approval prediction. Human review and signatures required.'}
+function normalizeDevelopment(d){
+ const clean=x=>String(x||'').trim().slice(0,200);
+ const parcels=Array.isArray(d.parcels)?d.parcels.slice(0,100).map(p=>({apn:clean(p.apn),address:clean(p.address)})):[];
+ const buildings=Array.isArray(d.buildings)?d.buildings.slice(0,100).map(b=>({label:clean(b.label),units:Number.isInteger(Number(b.units))&&Number(b.units)>=0?Number(b.units):0,parcel_apn:clean(b.parcel_apn)})):[];
+ return {housing_type:d.housing_type==='single_family'?'single_family':'townhomes',parcels,buildings};
+}
+function renderDevelopment(){
+ const root=document.getElementById('developmentEditor');if(!root)return;root.replaceChildren();
+ const heading=document.createElement('h3');heading.textContent='Development structure: parcels and buildings';root.append(heading);
+ const hint=document.createElement('p');hint.textContent='Track all parcels and buildings separately. These entries are for internal packet checks; city-required schedules must still be confirmed.';root.append(hint);
+ const type=document.createElement('select');type.setAttribute('aria-label','Development housing type');
+ for(const [id,label] of [['townhomes','New townhome development'],['single_family','New detached single-family development']]){const option=document.createElement('option');option.value=id;option.textContent=label;type.append(option)}
+ type.value=development.housing_type;type.addEventListener('change',()=>{development.housing_type=type.value;invalidatePacket();render()});root.append(type);
+ const title=document.createElement('h4');title.textContent='Parcels';root.append(title);
+ development.parcels.forEach((parcel,index)=>{
+  const row=document.createElement('div');row.className='check';
+  for(const [key,label] of [['apn','APN'],['address','Site address']]){const input=document.createElement('input');input.placeholder=label;input.setAttribute('aria-label',label+' parcel '+(index+1));input.value=parcel[key];input.addEventListener('input',()=>{parcel[key]=input.value;invalidatePacket();queueSave()});row.append(input)}
+  const del=document.createElement('button');del.className='btn';del.textContent='Remove';del.addEventListener('click',()=>{development.parcels.splice(index,1);invalidatePacket();renderDevelopment();render()});row.append(del);root.append(row)
+ });
+ const addParcel=document.createElement('button');addParcel.className='btn';addParcel.textContent='Add parcel';addParcel.addEventListener('click',()=>{development.parcels.push({apn:'',address:''});renderDevelopment();queueSave()});root.append(addParcel);
+ const buildings=document.createElement('h4');buildings.textContent='Buildings';root.append(buildings);
+ development.buildings.forEach((building,index)=>{
+  const row=document.createElement('div');row.className='check';
+  for(const [key,label] of [['label','Building label'],['units','Homes in building'],['parcel_apn','Parcel APN']]){
+   const input=document.createElement('input');input.placeholder=label;input.setAttribute('aria-label',label+' building '+(index+1));input.value=building[key];if(key==='units'){input.type='number';input.min='0';input.step='1'}
+   input.addEventListener('input',()=>{building[key]=key==='units'?input.value:input.value;invalidatePacket();queueSave()});row.append(input)
+  }
+  const del=document.createElement('button');del.className='btn';del.textContent='Remove';del.addEventListener('click',()=>{development.buildings.splice(index,1);invalidatePacket();renderDevelopment();render()});row.append(del);root.append(row)
+ });
+ const addBuilding=document.createElement('button');addBuilding.className='btn';addBuilding.textContent='Add building';addBuilding.addEventListener('click',()=>{development.buildings.push({label:'',units:1,parcel_apn:''});renderDevelopment();queueSave()});root.append(addBuilding);
+}
+function developmentIssues(){
+ const issues=[],apns=new Set();
+ for(const [i,p] of development.parcels.entries()){
+  if(!p.apn.trim())issues.push('Parcel '+(i+1)+' is missing its APN');
+  else if(apns.has(p.apn.trim()))issues.push('Duplicate parcel APN: '+p.apn);
+  else apns.add(p.apn.trim());
+ }
+ let total=0;
+ for(const [i,b] of development.buildings.entries()){
+  const n=Number(b.units);if(!Number.isInteger(n)||n<1)issues.push('Building '+(i+1)+' needs a positive whole-number home count');else total+=n;
+  if(!b.label.trim())issues.push('Building '+(i+1)+' needs a label');
+  if(development.parcels.length&&(!b.parcel_apn.trim()||!apns.has(b.parcel_apn.trim())))issues.push('Building '+(i+1)+' must reference a listed parcel APN');
+ }
+ if(development.buildings.length&&String(values['project.proposed_units']||'').trim()&&total!==Number(values['project.proposed_units']))issues.push('Building home total ('+total+') differs from proposed units ('+values['project.proposed_units']+')');
+ return issues;
+}
 function render(){if(!rules)return;queueSave();const required=rules.fields.filter(f=>f.requirement==='required');const complete=required.filter(f=>verified[f.id]&&String(values[f.id]||'').trim()).length;const pct=required.length?Math.round(complete/required.length*100):0;document.getElementById('pct').textContent=pct+'%';document.getElementById('progress').style.width=pct+'%';checklist.replaceChildren();for(const doc of rules.documents){const row=document.createElement('div');row.className='check';const span=document.createElement('span');const uploaded=files.some(f=>f.category===doc.id&&!f.restored);const pendingReupload=files.some(f=>f.category===doc.id&&f.restored);span.textContent=doc.label;const status=document.createElement('div');status.className='status';status.textContent=doc.requirement.replace('_',' ')+(uploaded?' · file selected, not verified':pendingReupload?' · re-upload required':' · not evidenced');row.append(span,status);row.style.display='block';checklist.append(row)}document.getElementById('preview').textContent=summary();document.querySelector('.right .muted').textContent='Required Westminster fields confirmed by user';renderDashboard()}
 function navigate(s){step=s;['uploads','results','project','people','packet'].forEach(k=>document.getElementById(k).classList.toggle('hide',k!==s));document.querySelectorAll('.step').forEach(b=>b.classList.toggle('active',b.dataset.step===s));document.getElementById('next').textContent=s==='packet'?'Back to results':'Continue →';render()}
-function data(){return {schema_version:'westminster-intake-2',jurisdiction:rules.jurisdiction,rule_pack_version:rules.version,fields:Object.fromEntries(rules.fields.map(f=>[f.id,{value:values[f.id]||null,status:verified[f.id]?'human_confirmed':values[f.id]?'unverified':'missing'}])),documents:files.map(f=>({name:f.name,size:f.size,category:f.category})),schedule:stages.map(x=>({stage:x.id,label:x.name,deadline:scheduleDates[x.id]||null,completed_by_user:!!scheduleCompleted[x.id],deadline_source:'user-entered; not city-verified'})),evidence,human_approved:false,auto_submit:false}}
+function data(){return {schema_version:'westminster-intake-2',jurisdiction:rules.jurisdiction,rule_pack_version:rules.version,fields:Object.fromEntries(rules.fields.map(f=>[f.id,{value:values[f.id]||null,status:verified[f.id]?'human_confirmed':values[f.id]?'unverified':'missing'}])),documents:files.map(f=>({name:f.name,size:f.size,category:f.category,needs_reupload:!!f.restored})),development:normalizeDevelopment(development),schedule:stages.map(x=>({stage:x.id,label:x.name,deadline:scheduleDates[x.id]||null,completed_by_user:!!scheduleCompleted[x.id],deadline_source:'user-entered; not city-verified'})),evidence,human_approved:false,auto_submit:false}}
 const exportJson=()=>{if(rules)download('westminster-intake.json',JSON.stringify(data(),null,2),'application/json')};
 document.querySelectorAll('.step').forEach(b=>b.addEventListener('click',()=>navigate(b.dataset.step)));
 document.getElementById('next').addEventListener('click',()=>{const a=['uploads','results','project','people','packet'];navigate(a[(a.indexOf(step)+1)%a.length])});
@@ -204,7 +252,7 @@ function packetDraft(){
   'This is an intake-based draft only. No zoning compliance, CEQA exemption, density bonus, utility capacity, subdivision approval, or Development Review findings are established by this document.',
   'The city must confirm the applicable review pathway and current submittal requirements. Signatures, certified technical studies, and official forms are not generated.'
  ].join('\n');
- return {format:'tribit-westminster-packet-draft-v1',generated_at:new Date().toISOString(),jurisdiction:rules.jurisdiction,rule_pack_version:rules.version,application_fields:data().fields,project_narrative:narrative,document_inventory:data().documents,missing_required_fields:missingFields,missing_required_documents:missingDocs,conditional_review_items:conditional,approval_prediction:null,city_completeness_determination:false,human_approved:false,auto_submit:false}
+ return {format:'tribit-westminster-packet-draft-v1',generated_at:new Date().toISOString(),jurisdiction:rules.jurisdiction,rule_pack_version:rules.version,application_fields:data().fields,project_narrative:narrative,document_inventory:data().documents,missing_required_fields:missingFields,missing_required_documents:missingDocs,conditional_review_items:conditional,development_issues:developmentIssues(),approval_prediction:null,city_completeness_determination:false,human_approved:false,auto_submit:false}
 }
 document.getElementById('generatePacket').addEventListener('click',()=>{
  if(!rules)return;
@@ -240,6 +288,7 @@ document.getElementById('downloadPacket').addEventListener('click',async()=>{
    zip.folder('forms').file(populatedForm.name,populatedForm.bytes);
   }
   zip.file('intake.json',JSON.stringify(data(),null,2));
+  zip.file('development-schedule.json',JSON.stringify({development:normalizeDevelopment(development),validation_issues:developmentIssues()},null,2));
   zip.file('draft-packet.json',JSON.stringify(packetBundle,null,2));
   zip.file('project-narrative-DRAFT.txt',packetBundle.project_narrative);
   zip.file('missing-items.json',JSON.stringify({required_fields:packetBundle.missing_required_fields,required_documents:packetBundle.missing_required_documents,conditional_review:packetBundle.conditional_review_items},null,2));
@@ -259,6 +308,7 @@ function runPreflight(){
   if(f.requirement==='required'&&!value)issue('field:'+f.id,'intake','blocker',f.label,'Required field is blank.','Enter the correct value from a source document or authorized person.',rules.sources[f.source]||null);
   else if(value&&!verified[f.id])issue('verify:'+f.id,'evidence','review',f.label,'Field is populated but not confirmed by a human.','Compare against the original source and confirm before submission.',null);
  }
+ for(const [i,message] of developmentIssues().entries())issue('development:'+i,'development','blocker','Development structure',message,'Correct parcel and building details before generating a final packet.');
  for(const d of rules.documents){
   const matched=files.filter(f=>f.category===d.id&&!f.restored);const pending=files.some(f=>f.category===d.id&&f.restored);
   if(d.requirement==='required'&&!matched.length)issue('document:'+d.id,'document','blocker',d.label,pending?'Previously selected file must be re-uploaded.':'No file has been classified under this required category.','Obtain and classify the document; verify its actual contents.',rules.sources[d.source]||null);
