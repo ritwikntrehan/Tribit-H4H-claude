@@ -481,7 +481,24 @@ claudeButton.addEventListener('click',async()=>{
  finally{claudeButton.disabled=false}
 });
 document.getElementById('importBtn').addEventListener('click',()=>document.getElementById('import').click());
-document.getElementById('import').addEventListener('change',async e=>{const file=e.target.files[0];if(!file)return;try{const d=JSON.parse(await file.text());if(d.jurisdiction!=='Westminster, CA'||!d.fields||typeof d.fields!=='object')throw Error('Expected Westminster intake JSON with fields');for(const f of rules.fields){const entry=d.fields[f.id];if(entry&&typeof entry.value==='string')values[f.id]=entry.value;else if(entry&&typeof entry.value==='number')values[f.id]=String(entry.value);verified[f.id]=false;delete evidence[f.id]}files=[];localFiles.clear();build();document.getElementById('filelist').textContent='Imported document metadata is not a file upload. Re-select files to inventory them.';alert('Imported values are unverified. Review each field.')}catch(err){alert('Import failed: '+err.message)}e.target.value=''});
+document.getElementById('import').addEventListener('change',async e=>{
+ const file=e.target.files[0];if(!file)return;
+ try{
+  const d=JSON.parse(await file.text());
+  if(!rules||d.jurisdiction!=='Westminster, CA'||!d.fields||typeof d.fields!=='object')throw Error('Expected Westminster intake JSON with fields');
+  if(Object.values(values).some(v=>String(v||'').trim())&&!window.confirm('Import will replace the current intake. Continue?'))return;
+  const imported={};
+  for(const f of rules.fields){const entry=d.fields[f.id];if(entry&&(typeof entry.value==='string'||typeof entry.value==='number'))imported[f.id]=String(entry.value).slice(0,3000)}
+  values=imported;verified={};evidence={};localFiles.clear();
+  development=normalizeDevelopment(d.development||{});
+  files=Array.isArray(d.documents)?d.documents.filter(x=>x&&typeof x.name==='string').map(x=>({name:x.name.slice(0,255),size:Number(x.size)||0,category:rules.documents.some(y=>y.id===x.category)?x.category:'unclassified',restored:true})):[];
+  for(const k of Object.keys(scheduleDates))delete scheduleDates[k];
+  for(const k of Object.keys(scheduleCompleted))delete scheduleCompleted[k];
+  if(Array.isArray(d.schedule))for(const item of d.schedule){if(stages.some(x=>x.id===item.stage)){if(/^\d{4}-\d{2}-\d{2}$/.test(item.deadline||''))scheduleDates[item.stage]=item.deadline;scheduleCompleted[item.stage]=!!item.completed_by_user}}
+  invalidatePacket();build();drawFileInventory();renderSchedule();navigate('project');
+  document.getElementById('draftStatus').textContent='Intake imported. Reconfirm fields and re-upload referenced documents.';
+ }catch(err){alert('Import failed: '+err.message)}finally{e.target.value=''}
+});
 fetch(RULES_URL).then(r=>{if(!r.ok)throw Error('HTTP '+r.status);return r.json()}).then(d=>{if(!Array.isArray(d.fields)||!Array.isArray(d.documents))throw Error('Invalid rule pack');rules=d;restoreDraft();build();drawFileInventory()}).catch(err=>{originalProject.innerHTML='<h2>Rules unavailable</h2><p>The Westminster rule pack could not be loaded ('+String(err.message).replace(/[<>]/g,'')+'). Check that the deployed site serves ./data/development-review.v0.1.json and reload.</p>';document.getElementById('pct').textContent='—';});
 })();
 </script></body></html>
