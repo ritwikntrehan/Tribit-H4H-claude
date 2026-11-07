@@ -1,0 +1,19 @@
+services:
+  - type: web
+    name: tribit-h4h-api
+    runtime: node
+    rootDir: backend
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: H4H_ACCESS_TOKEN
+        generateValue: true
+      - key: ALLOWED_ORIGIN
+        value: https://ritwikntrehan.github.io
+      - key: CLAUDE_MODEL
+        value: claude-sonnet-4-5
