@@ -1,0 +1,430 @@
+{
+  "jurisdiction": "Westminster, CA",
+  "workflow": "development_review",
+  "scenario": "hypothetical six attached ownership townhomes",
+  "version": "0.1-research",
+  "review_status": "needs_city_confirmation",
+  "sources": {
+    "packet": "https://www.westminster-ca.gov/home/showpublisheddocument/536/637544150393130000",
+    "forms": "https://www.westminster-ca.gov/departments/community-development/planning-division/applications-forms-and-permits",
+    "applicability": "https://ecode360.com/43536851",
+    "filing": "https://ecode360.com/43536855",
+    "findings": "https://ecode360.com/43536807",
+    "process": "https://www.westminster-ca.gov/departments/community-development/planning-division/development-review-process"
+  },
+  "fields": [
+    {
+      "id": "property.address",
+      "label": "Property address/location",
+      "source": "packet",
+      "requirement": "required",
+      "autofill_policy": "evidence_or_human_only",
+      "review": "human_confirm"
+    },
+    {
+      "id": "property.apn",
+      "label": "Assessor parcel number",
+      "source": "packet",
+      "requirement": "required",
+      "autofill_policy": "evidence_or_human_only",
+      "review": "human_confirm"
+    },
+    {
+      "id": "property.zoning",
+      "label": "Zoning district",
+      "source": "packet",
+      "requirement": "required",
+      "autofill_policy": "evidence_or_human_only",
+      "review": "human_confirm"
+    },
+    {
+      "id": "property.general_plan",
+      "label": "General Plan designation",
+      "source": "packet",
+      "requirement": "required",
+      "autofill_policy": "evidence_or_human_only",
+      "review": "human_confirm"
+    },
+    {
+      "id": "property.legal_description",
+      "label": "Legal description",
+      "source": "packet",
+      "requirement": "required",
+      "autofill_policy": "evidence_or_human_only",
+      "review": "human_confirm"
+    },
+    {
+      "id": "project.description",
+      "label": "Project description",
+      "source": "packet",
+      "requirement": "required",
+      "autofill_policy": "evidence_or_human_only",
+      "review": "human_confirm"
+    },
+    {
+      "id": "applicant.name",
+      "label": "Applicant name",
+      "source": "packet",
+      "requirement": "required",
+      "autofill_policy": "evidence_or_human_only",
+      "review": "human_confirm"
+    },
+    {
+      "id": "applicant.address",
+      "label": "Applicant mailing address",
+      "source": "packet",
+      "requirement": "required",
+      "autofill_policy": "evidence_or_human_only",
+      "review": "human_confirm"
+    },
+    {
+      "id": "applicant.city",
+      "label": "Applicant city",
+      "source": "packet",
+      "requirement": "required",
+      "autofill_policy": "evidence_or_human_only",
+      "review": "human_confirm"
+    },
+    {
+      "id": "applicant.state",
+      "label": "Applicant state",
+      "source": "packet",
+      "requirement": "required",
+      "autofill_policy": "evidence_or_human_only",
+      "review": "human_confirm"
+    },
+    {
+      "id": "applicant.zip",
+      "label": "Applicant ZIP",
+      "source": "packet",
+      "requirement": "required",
+      "autofill_policy": "evidence_or_human_only",
+      "review": "human_confirm"
+    },
+    {
+      "id": "applicant.email",
+      "label": "Applicant email",
+      "source": "packet",
+      "requirement": "required",
+      "autofill_policy": "evidence_or_human_only",
+      "review": "human_confirm"
+    },
+    {
+      "id": "applicant.phone",
+      "label": "Applicant phone",
+      "source": "packet",
+      "requirement": "required",
+      "autofill_policy": "evidence_or_human_only",
+      "review": "human_confirm"
+    },
+    {
+      "id": "owner.name",
+      "label": "Owner name",
+      "source": "packet",
+      "requirement": "required",
+      "autofill_policy": "evidence_or_human_only",
+      "review": "human_confirm"
+    },
+    {
+      "id": "owner.address",
+      "label": "Owner mailing address",
+      "source": "packet",
+      "requirement": "required",
+      "autofill_policy": "evidence_or_human_only",
+      "review": "human_confirm"
+    },
+    {
+      "id": "owner.city",
+      "label": "Owner city",
+      "source": "packet",
+      "requirement": "required",
+      "autofill_policy": "evidence_or_human_only",
+      "review": "human_confirm"
+    },
+    {
+      "id": "owner.state",
+      "label": "Owner state",
+      "source": "packet",
+      "requirement": "required",
+      "autofill_policy": "evidence_or_human_only",
+      "review": "human_confirm"
+    },
+    {
+      "id": "owner.zip",
+      "label": "Owner ZIP",
+      "source": "packet",
+      "requirement": "required",
+      "autofill_policy": "evidence_or_human_only",
+      "review": "human_confirm"
+    },
+    {
+      "id": "owner.email",
+      "label": "Owner email",
+      "source": "packet",
+      "requirement": "required",
+      "autofill_policy": "evidence_or_human_only",
+      "review": "human_confirm"
+    },
+    {
+      "id": "owner.phone",
+      "label": "Owner phone",
+      "source": "packet",
+      "requirement": "required",
+      "autofill_policy": "evidence_or_human_only",
+      "review": "human_confirm"
+    },
+    {
+      "id": "agent.name",
+      "label": "Authorized agent name",
+      "source": "packet",
+      "requirement": "conditional",
+      "autofill_policy": "evidence_or_human_only",
+      "review": "human_confirm"
+    },
+    {
+      "id": "architect.name",
+      "label": "Architect/designer name",
+      "source": "packet",
+      "requirement": "conditional",
+      "autofill_policy": "evidence_or_human_only",
+      "review": "human_confirm"
+    },
+    {
+      "id": "project.proposed_units",
+      "label": "Proposed unit count",
+      "source": "applicability",
+      "requirement": "required",
+      "autofill_policy": "evidence_or_human_only",
+      "review": "human_confirm"
+    },
+    {
+      "id": "project.existing_units",
+      "label": "Existing units on site",
+      "source": "packet",
+      "requirement": "needs_confirmation",
+      "autofill_policy": "evidence_or_human_only",
+      "review": "human_confirm"
+    },
+    {
+      "id": "project.affordability",
+      "label": "Affordability program/commitment",
+      "source": "forms",
+      "requirement": "needs_confirmation",
+      "autofill_policy": "evidence_or_human_only",
+      "review": "human_confirm"
+    }
+  ],
+  "documents": [
+    {
+      "id": "development_review_application",
+      "label": "Development Review application",
+      "requirement": "required",
+      "source": "packet",
+      "review": "confirm_applicability",
+      "status": "unverified"
+    },
+    {
+      "id": "owner_authorization",
+      "label": "Owner authorization and signature",
+      "requirement": "required",
+      "source": "packet",
+      "review": "confirm_applicability",
+      "status": "unverified"
+    },
+    {
+      "id": "project_narrative",
+      "label": "Detailed project description",
+      "requirement": "required",
+      "source": "packet",
+      "review": "confirm_applicability",
+      "status": "unverified"
+    },
+    {
+      "id": "ownership_verification",
+      "label": "Grant deed or other ownership verification",
+      "requirement": "required",
+      "source": "packet",
+      "review": "confirm_applicability",
+      "status": "unverified"
+    },
+    {
+      "id": "title_report",
+      "label": "Full recent title report",
+      "requirement": "required",
+      "source": "packet",
+      "review": "confirm_applicability",
+      "status": "unverified"
+    },
+    {
+      "id": "site_plans",
+      "label": "Site and architectural plan package",
+      "requirement": "required",
+      "source": "packet",
+      "review": "confirm_applicability",
+      "status": "unverified"
+    },
+    {
+      "id": "housing_energy_questionnaire",
+      "label": "Residential energy questionnaire",
+      "requirement": "required",
+      "source": "packet",
+      "review": "confirm_applicability",
+      "status": "unverified"
+    },
+    {
+      "id": "hazardous_waste_statement",
+      "label": "Hazardous waste statement",
+      "requirement": "required",
+      "source": "packet",
+      "review": "confirm_applicability",
+      "status": "unverified"
+    },
+    {
+      "id": "colored_elevations",
+      "label": "Colored building elevations",
+      "requirement": "required",
+      "source": "packet",
+      "review": "confirm_applicability",
+      "status": "unverified"
+    },
+    {
+      "id": "materials_board",
+      "label": "Materials and colors board",
+      "requirement": "required",
+      "source": "packet",
+      "review": "confirm_applicability",
+      "status": "unverified"
+    },
+    {
+      "id": "water_quality_affidavit",
+      "label": "Water Quality Management Plan affidavit",
+      "requirement": "required",
+      "source": "packet",
+      "review": "confirm_applicability",
+      "status": "unverified"
+    },
+    {
+      "id": "replacement_housing_determination",
+      "label": "Replacement housing determination",
+      "requirement": "required",
+      "source": "packet",
+      "review": "confirm_applicability",
+      "status": "unverified"
+    },
+    {
+      "id": "park_fee_acknowledgment",
+      "label": "Park impact fee acknowledgment",
+      "requirement": "needs_confirmation",
+      "source": "packet",
+      "review": "confirm_applicability",
+      "status": "unverified"
+    },
+    {
+      "id": "ocfa_review",
+      "label": "Fire authority review/request",
+      "requirement": "conditional",
+      "source": "packet",
+      "review": "confirm_applicability",
+      "status": "unverified"
+    },
+    {
+      "id": "public_notice",
+      "label": "Notification radius/map/mail list",
+      "requirement": "conditional",
+      "source": "packet",
+      "review": "confirm_applicability",
+      "status": "unverified"
+    },
+    {
+      "id": "density_bonus",
+      "label": "Density Bonus application and evidence",
+      "requirement": "conditional",
+      "source": "packet",
+      "review": "confirm_applicability",
+      "status": "unverified"
+    },
+    {
+      "id": "sb330_replacement",
+      "label": "SB 330 replacement housing/tenant documentation",
+      "requirement": "conditional",
+      "source": "packet",
+      "review": "confirm_applicability",
+      "status": "unverified"
+    },
+    {
+      "id": "subdivision",
+      "label": "Subdivision/condominium documents",
+      "requirement": "conditional",
+      "source": "packet",
+      "review": "confirm_applicability",
+      "status": "unverified"
+    },
+    {
+      "id": "ceqa",
+      "label": "Environmental documentation",
+      "requirement": "conditional",
+      "source": "packet",
+      "review": "confirm_applicability",
+      "status": "unverified"
+    },
+    {
+      "id": "wqmp",
+      "label": "Technical water quality management plan",
+      "requirement": "conditional",
+      "source": "packet",
+      "review": "confirm_applicability",
+      "status": "unverified"
+    }
+  ],
+  "rules": [
+    {
+      "id": "DR-APPLICABILITY",
+      "source": "applicability",
+      "logic": "new_residential_units >= 3",
+      "outcome": "development_review_likely",
+      "confidence": "high",
+      "caveat": "Check statutory exemptions and alternative ministerial pathways"
+    },
+    {
+      "id": "DR-FILING",
+      "source": "filing",
+      "logic": "application_information_complete AND supporting_evidence_present",
+      "outcome": "eligible_for_city_completeness_review",
+      "confidence": "high",
+      "caveat": "Director may request additional information; not a city completeness determination"
+    },
+    {
+      "id": "DR-FINDING-1",
+      "source": "findings",
+      "logic": "public_health_safety_welfare",
+      "outcome": "requires_evidence_and_city_judgment",
+      "confidence": "city_decides"
+    },
+    {
+      "id": "DR-FINDING-2",
+      "source": "findings",
+      "logic": "zoning_and_design_guidelines_compliance",
+      "outcome": "requires_parcel_specific_analysis",
+      "confidence": "city_decides"
+    },
+    {
+      "id": "DR-FINDING-3",
+      "source": "findings",
+      "logic": "general_plan_and_specific_plan_consistency",
+      "outcome": "requires_parcel_specific_analysis",
+      "confidence": "city_decides"
+    },
+    {
+      "id": "DR-FINDING-4",
+      "source": "findings",
+      "logic": "adequacy_of_public_facilities_and_utilities",
+      "outcome": "requires_agency_evidence",
+      "confidence": "city_decides"
+    }
+  ],
+  "gates": {
+    "draft_ready": "required_fields_have_verified_or_human_confirmed_values",
+    "packet_complete_candidate": "required_documents_present AND no_unresolved_critical_conflicts AND pathway_confirmed",
+    "approval_prediction": "not_supported"
+  }
+}
