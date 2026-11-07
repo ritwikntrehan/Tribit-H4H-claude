@@ -1,0 +1,92 @@
+{
+  "project_id": "SYNTHETIC-WESTMINSTER-001",
+  "jurisdiction": "Westminster, CA",
+  "property": {
+    "address": {
+      "value": null,
+      "status": "missing"
+    },
+    "apn": {
+      "value": null,
+      "status": "missing"
+    },
+    "zoning": {
+      "value": null,
+      "status": "missing"
+    },
+    "general_plan": {
+      "value": null,
+      "status": "missing"
+    },
+    "lot_area_sqft": {
+      "value": null,
+      "status": "missing"
+    }
+  },
+  "development": {
+    "housing_type": {
+      "value": "attached townhomes",
+      "status": "unverified",
+      "note": "Hypothetical Habitat OC representative typology, not an actual Westminster proposal"
+    },
+    "proposed_units": {
+      "value": 6,
+      "status": "unverified"
+    },
+    "ownership_model": {
+      "value": "deed-restricted affordable ownership",
+      "status": "unverified"
+    },
+    "affordability": {
+      "value": null,
+      "status": "missing"
+    },
+    "project_description": {
+      "value": "Hypothetical six attached affordable ownership townhomes; site, design and affordability details TBD.",
+      "status": "unverified"
+    },
+    "existing_units": {
+      "value": null,
+      "status": "missing"
+    }
+  },
+  "contacts": {},
+  "documents": [
+    {
+      "id": "deed",
+      "type": "ownership verification",
+      "status": "missing"
+    },
+    {
+      "id": "title",
+      "type": "title report",
+      "status": "missing"
+    },
+    {
+      "id": "siteplan",
+      "type": "site plan",
+      "status": "missing"
+    },
+    {
+      "id": "floorplans",
+      "type": "floor plans",
+      "status": "missing"
+    },
+    {
+      "id": "elevations",
+      "type": "building elevations",
+      "status": "missing"
+    }
+  ],
+  "review": {
+    "city_pathway_confirmed": false,
+    "human_approved": false,
+    "auto_submit": false,
+    "open_questions": [
+      "Confirm parcel and zoning",
+      "Confirm city application pathway and current forms",
+      "Confirm ownership configuration and subdivision/condominium needs",
+      "Confirm density bonus and affordability requirements"
+    ]
+  }
+}
