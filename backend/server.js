@@ -1,4 +1,7 @@
 import http from 'node:http';
+import { readFile } from 'node:fs/promises';
+import { resolve, sep } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { timingSafeEqual } from 'node:crypto';
 
 const PORT = Number(process.env.PORT || 10000);
@@ -7,15 +10,27 @@ const ACCESS_TOKEN = process.env.H4H_ACCESS_TOKEN || '';
 const ORIGIN = process.env.ALLOWED_ORIGIN || 'https://ritwikntrehan.github.io';
 const MODEL = process.env.CLAUDE_MODEL || 'claude-sonnet-4-5';
 const MAX_BODY = 1024 * 1024;
+const DOCS = resolve(fileURLToPath(new URL('../docs/', import.meta.url)));
+const MIME = {'.html':'text/html; charset=utf-8','.js':'application/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.json':'application/json; charset=utf-8','.svg':'image/svg+xml','.png':'image/png','.ico':'image/x-icon','.pdf':'application/pdf'};
+async function serveStatic(req,res){
+ let path;try{path=decodeURIComponent(new URL(req.url,'http://localhost').pathname);}catch{return send(res,400,{error:'Bad path'});}
+ if(path==='/' )path='/index.html';
+ const filename=resolve(DOCS,'.'+path);
+ if(!filename.startsWith(DOCS+sep))return send(res,403,{error:'Forbidden'});
+ try{const data=await readFile(filename);const ext=filename.slice(filename.lastIndexOf('.'));res.writeHead(200,{'Content-Type':MIME[ext]||'application/octet-stream','X-Content-Type-Options':'nosniff','Cache-Control':path==='/config.js'?'no-store':'public, max-age=300'});return res.end(data);}catch{return send(res,404,{error:'Not found'});}
+}
 const FIELDS = new Set(['property.apn','property.address','property.legal_description','property.zoning','property.general_plan','project.description','project.proposed_units','project.existing_units','project.affordability','applicant.name','applicant.address','applicant.city','applicant.state','applicant.zip','applicant.email','applicant.phone','owner.name','owner.address','owner.city','owner.state','owner.zip','owner.email','owner.phone','agent.name','architect.name']);
 const send = (res,status,body) => { res.writeHead(status,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify(body)); };
 const equal = (a,b) => {const x=Buffer.from(a||'');const y=Buffer.from(b||'');return x.length===y.length && timingSafeEqual(x,y);};
 const validPage = p => p && typeof p.filename==='string' && p.filename.length<=180 && Number.isInteger(p.page) && p.page>0 && typeof p.text==='string' && p.text.length<=12000;
 const cors = (req,res) => {const origin=req.headers.origin;if(origin===ORIGIN){res.setHeader('Access-Control-Allow-Origin',origin);res.setHeader('Vary','Origin');res.setHeader('Access-Control-Allow-Headers','Content-Type, X-H4H-Token');res.setHeader('Access-Control-Allow-Methods','POST, OPTIONS, GET');}return !origin || origin===ORIGIN;};
 const server=http.createServer(async(req,res)=>{
- if(!cors(req,res))return send(res,403,{error:'Origin not allowed'});
+ const requestOrigin=req.headers.origin;
+ const sameOrigin=Boolean(requestOrigin && requestOrigin===('https://'+req.headers.host));
+ if(!sameOrigin && !cors(req,res))return send(res,403,{error:'Origin not allowed'});
  if(req.method==='OPTIONS'){res.writeHead(204);return res.end();}
  if(req.url==='/health' && req.method==='GET')return send(res,200,{ok:true,configured:Boolean(API_KEY&&ACCESS_TOKEN)});
+ if(req.method==='GET' && !req.url.startsWith('/api/'))return serveStatic(req,res);
  if(req.url!=='/api/extract'||req.method!=='POST')return send(res,404,{error:'Not found'});
  if(!API_KEY||!ACCESS_TOKEN)return send(res,503,{error:'Service not configured'});
  if(!equal(req.headers['x-h4h-token'],ACCESS_TOKEN))return send(res,401,{error:'Authentication required'});
