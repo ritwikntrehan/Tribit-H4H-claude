@@ -34,7 +34,8 @@
 (()=>{'use strict';
 const RULES_URL='./data/development-review.v0.1.json';
 const groups={project:['property.','project.'],people:['applicant.','owner.','agent.','architect.']};
-let rules=null,values={},verified={},files=[],evidence={},localFiles=new Map(),step='uploads';\nconst scheduleDates={};
+let rules=null,values={},verified={},files=[],evidence={},localFiles=new Map(),step='uploads';
+const scheduleDates={};
 const originalProject=document.getElementById('project'),originalPeople=document.getElementById('people');
 originalProject.innerHTML='<h2>Westminster application intake</h2><p>Fields are loaded from the versioned Westminster Development Review rules. Missing facts stay blank.</p><div id="projectFields" class="fields"></div><div class="note">A populated field is not verified. Confirm every fact against the source document and the city form.</div>';
 originalPeople.innerHTML='<h2>Applicant, owner & professionals</h2><p>Enter information from the deed, title report, or authorized contacts. Signatures are not generated.</p><div id="peopleFields" class="fields"></div><div class="note">All project data remains in your browser until you export it. Avoid entering sensitive personal information into a public demo.</div>';
